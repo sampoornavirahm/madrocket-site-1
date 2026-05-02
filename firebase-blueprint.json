@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "SiteConfig": {
+      "title": "Site Configuration",
+      "description": "Global settings and content for the entire website",
+      "type": "object",
+      "properties": {
+        "brand": { "type": "string", "description": "Agency name" },
+        "hero": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "subtitle": { "type": "string" },
+            "cta": { "type": "string" }
+          },
+          "required": ["title", "subtitle", "cta"]
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "icon": { "type": "string" }
+            },
+            "required": ["id", "title", "description"]
+          }
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "price": { "type": "string" },
+              "features": { "type": "array", "items": { "type": "string" } },
+              "highlight": { "type": "boolean" }
+            },
+            "required": ["name", "price", "features"]
+          }
+        },
+        "about": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "content": { "type": "string" }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        }
+      },
+      "required": ["brand", "hero", "services", "plans"]
+    },
+    "Enquiry": {
+      "title": "Contact Enquiry",
+      "description": "Data from the contact form",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "plan": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "plan", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/config/site": {
+      "schema": "SiteConfig",
+      "description": "Global site content and configuration"
+    },
+    "/enquiries/{enquiryId}": {
+      "schema": "Enquiry",
+      "description": "User form submissions"
+    }
+  }
+}

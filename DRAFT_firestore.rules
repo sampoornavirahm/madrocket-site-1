@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // Admin check - using the provided email
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'piyush.resoluteai@gmail.com' && 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    // --- Site Config ---
+    match /config/site {
+      // Publicly readable so the site can load its content
+      allow read: if true;
+      // Only admin can update the site config via console/code
+      allow write: if isAdmin();
+    }
+
+    // --- Enquiries ---
+    match /enquiries/{enquiryId} {
+      // Anyone can submit an enquiry
+      allow create: if isValidEnquiry(incoming());
+      // Only admin can read enquiries
+      allow read, list: if isAdmin();
+      // Nobody can update or delete enquiries except maybe admin
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    function isValidEnquiry(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'createdAt']) &&
+             data.keys().size() == 4 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.email is string && data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+             data.createdAt == request.time;
+    }
+  }
+}
