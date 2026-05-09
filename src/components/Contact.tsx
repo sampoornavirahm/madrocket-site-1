@@ -1,16 +1,32 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Send, MapPin, Mail, CheckCircle2 } from 'lucide-react';
 import { siteService } from '../services/siteService';
 
 interface ContactProps {
   email: string;
   address: string;
+  initialPlan?: string;
+  onPlanSelected?: () => void;
 }
 
-export const Contact: React.FC<ContactProps> = ({ email, address }) => {
+export const Contact: React.FC<ContactProps> = ({ email, address, initialPlan, onPlanSelected }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [formData, setFormData] = useState({ name: '', email: '', plan: 'Starter', message: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    email: '', 
+    plan: initialPlan || 'The Digital Foundation', 
+    message: '' 
+  });
+
+  useEffect(() => {
+    if (initialPlan) {
+      setFormData(prev => ({ ...prev, plan: initialPlan }));
+      onPlanSelected?.();
+    }
+  }, [initialPlan, onPlanSelected]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +34,7 @@ export const Contact: React.FC<ContactProps> = ({ email, address }) => {
     try {
       await siteService.submitEnquiry(formData);
       setStatus('success');
-      setFormData({ name: '', email: '', plan: 'Starter', message: '' });
+      setFormData({ name: '', email: '', plan: 'The Digital Foundation', message: '' });
       setTimeout(() => setStatus('idle'), 5000);
     } catch (error) {
       console.error(error);
@@ -91,10 +107,10 @@ export const Contact: React.FC<ContactProps> = ({ email, address }) => {
                   onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
                   className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-colors appearance-none cursor-pointer"
                 >
-                  <option value="Starter">Starter Plan</option>
-                  <option value="Pro">Professional Plan</option>
-                  <option value="Enterprise">Enterprise Plan</option>
-                  <option value="Custom">Custom Orbit (Tailored)</option>
+                  <option value="The Digital Foundation">The Digital Foundation</option>
+                  <option value="The Adaptive Subscription">The Adaptive Subscription</option>
+                  <option value="The Virtual Campus (Elite)">The Virtual Campus (Elite)</option>
+                  <option value="Custom Consultation">Custom Consultation</option>
                 </select>
               </div>
               <div className="space-y-2">

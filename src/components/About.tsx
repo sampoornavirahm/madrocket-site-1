@@ -20,7 +20,7 @@ export const About: React.FC<AboutProps> = ({ title, content }) => {
              <div className="w-32 h-32 bg-blue-500 rounded-full blur-[80px] animate-pulse" />
           </div>
           <div className="absolute inset-0 flex items-center justify-center text-8xl font-black text-white/5 uppercase select-none rotate-12">
-            Mad Rocket
+            MadRocket
           </div>
         </motion.div>
 
