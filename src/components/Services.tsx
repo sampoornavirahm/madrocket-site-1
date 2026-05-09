@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Rocket, Code, Palette, Zap, CheckCircle } from 'lucide-react';
 import { Service } from '../types';
 

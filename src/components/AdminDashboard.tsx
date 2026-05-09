@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { siteService } from '../services/siteService';
 import { Enquiry } from '../types';
 import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw } from 'lucide-react';
