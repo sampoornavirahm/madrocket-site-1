@@ -31,7 +31,7 @@ export const Clients: React.FC<ClientsProps> = ({ clients, onJoinRoster }) => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clients.map((client, i) => (
+          {[...clients].sort((a, b) => a.localeCompare(b)).map((client, i) => (
             <motion.div
               key={client}
               initial={{ opacity: 0, scale: 0.95 }}

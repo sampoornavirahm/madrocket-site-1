@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, orderBy, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { SiteConfig, Enquiry } from '../types';
 
@@ -67,15 +67,28 @@ export const siteService = {
     }
   },
   
-  async getEnquiries(): Promise<Enquiry[]> {
+  async getEnquiries(planFilter?: string): Promise<Enquiry[]> {
     const path = 'enquiries';
     try {
-      const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+      let q = query(collection(db, path), orderBy('createdAt', 'desc'));
+      if (planFilter && planFilter !== 'All Plans') {
+        const { where } = await import('firebase/firestore');
+        q = query(collection(db, path), where('plan', '==', planFilter), orderBy('createdAt', 'desc'));
+      }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({ ...doc.data() } as Enquiry));
     } catch (e) {
       handleFirestoreError(e, OperationType.LIST, path);
       return [];
+    }
+  },
+
+  async updateClients(clients: string[]): Promise<void> {
+    try {
+      const docRef = doc(db, CONFIG_PATH);
+      await updateDoc(docRef, { clients });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, CONFIG_PATH);
     }
   }
 };
