@@ -1,7 +1,7 @@
 import { SiteConfig } from './types';
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
-  brand: "Mad Rocket",
+  brand: "MadRocket",
   hero: {
     title: "We Launch Your Ideas Into Orbit",
     subtitle: "High-performance marketing and premium web solutions designed to scale your business to the stratosphere.",
@@ -35,48 +35,87 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   ],
   plans: [
     {
-      id: "ignition",
-      name: "Ignition",
-      price: "₹15,000",
+      id: "foundation",
+      name: "The Digital Foundation",
+      price: "₹50,000",
       features: [
-        "High-Converting Landing Page",
-        "Essential SEO Setup",
-        "Google Business Profile",
-        "Basic Analytics Integration"
+        "Strictly School Website Only",
+        "₹20,000 Annual AMC (From Year 2)",
+        "Minimum 7% Annual Increase (Year 3+)",
+        "Professional Standard Website Layout",
+        "100 Free Content Posts",
+        "Standard Maintenance only",
+        "Free Hosting (Yr 1); Actuals thereafter",
+        "8-Hour Working Call Support",
+        "Resolution within 72 Hours",
+        "Standard Ticketing System Access"
       ]
     },
     {
-      id: "orbital",
-      name: "Orbital",
-      price: "₹45,000",
+      id: "adaptive",
+      name: "The Adaptive Subscription",
+      price: "₹50k - ₹4.5L",
       features: [
-        "5-Page Premium Website",
-        "Advanced SEO Strategy",
-        "Performance Ads Strategy",
-        "CMS Integration",
-        "Priority Support"
+        "Evolving Digital Subscription model",
+        "Premium Design & Brand Positioning",
+        "Recurring Annual Subscription License",
+        "Minimum 5% Annual Increase",
+        "200 Free Content Posts",
+        "Periodic Design & Feature Updates",
+        "Cloud hosting included (Standard)",
+        "24x7 Call Support",
+        "Resolution within 48 Hours",
+        "Social Media & Presence Management"
       ],
       highlight: true
     },
     {
-      id: "interstellar",
-      name: "Interstellar",
-      price: "Custom",
+      id: "virtual-campus",
+      name: "The Virtual Campus (Elite)",
+      price: "₹5,00,000+",
       features: [
-        "Full E-commerce Ecosystem",
-        "Omni-channel Marketing",
-        "Brand Identity Workshop",
-        "Dedicated Growth Manager",
-        "Custom Feature Development"
+        "All-Inclusive Custom Ecosystem",
+        "Custom Quoted Annual Recurring",
+        "Minimum 5% Annual Increase",
+        "Best-in-Class Bespoke Visual Identity",
+        "Unlimited Free Content Posts",
+        "On-Demand Priority Design Updates",
+        "Premium Cloud Hosting included",
+        "Dedicated Support Engineer (24x7)",
+        "Resolution within 24 Hours",
+        "Custom Mini-Apps (Admission/Results)",
+        "Full 3rd-Party Software Integration",
+        "SEO, SMM & Brand Growth Management"
       ]
     }
   ],
   about: {
     title: "Built for Success",
-    content: "At Mad Rocket, we don't just build websites; we build growth engines. Based in India, we work with ambitious entrepreneurs to turn their vision into market-leading digital realities."
+    content: "At MadRocket, we don't just build websites; we build growth engines. Based in India, we work with ambitious entrepreneurs to turn their vision into market-leading digital realities."
   },
   contact: {
     email: "hello@madrocket.in",
     address: "Nagpur, India"
+  },
+  clients: [
+    "Bhange Academy",
+    "SGHP School",
+    "Ranwara Farms",
+    "Dash Corp OOH",
+    "Black Fantasy Footwear",
+    "SR Events Management",
+    "Itsyumm Food Delivery",
+    "Time The Race",
+    "Rapha Health System",
+    "Star Concept Service",
+    "TigerMan Sports",
+    "Miles N Milers",
+    "CSD Mediatech"
+  ],
+  socialLinks: {
+    instagram: "https://instagram.com/madrocket",
+    linkedin: "https://linkedin.com/company/madrocket",
+    twitter: "https://twitter.com/madrocket",
+    facebook: "https://facebook.com/madrocket"
   }
 };

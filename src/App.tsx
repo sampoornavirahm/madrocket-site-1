@@ -5,18 +5,26 @@ import { Hero } from './components/Hero';
 import { Services } from './components/Services';
 import { About } from './components/About';
 import { Plans } from './components/Plans';
+import { Clients } from './components/Clients';
 import { Contact } from './components/Contact';
 import { AdminDashboard } from './components/AdminDashboard';
 import { siteService } from './services/siteService';
 import { SiteConfig } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
-import { Rocket, LogIn, LogOut, User } from 'lucide-react';
+import { Rocket, LogIn, LogOut, User, Instagram, Linkedin, Twitter, Facebook } from 'lucide-react';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User as FirebaseUser } from 'firebase/auth';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
   const [config, setConfig] = useState<SiteConfig | null>(null);
+
+  const handlePlanSelect = (planName: string) => {
+    setSelectedPlan(planName);
+    setCurrentPage('contact');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -117,7 +125,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Rocket className="w-5 h-5 text-blue-500" />
-              <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">Mad Rocket <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">Admin</span></span>
+              <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">MadRocket <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">Admin</span></span>
             </div>
             <div className="flex items-center gap-6">
               <span className="hidden md:flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-blue-500">
@@ -173,6 +181,17 @@ export default function App() {
             </motion.div>
           )}
 
+          {currentPage === 'clients' && (
+            <motion.div
+              key="clients"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+            >
+              <Clients clients={config.clients || []} onJoinRoster={() => setCurrentPage('contact')} />
+            </motion.div>
+          )}
+
           {currentPage === 'about' && (
             <motion.div
               key="about"
@@ -191,7 +210,7 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
             >
-              <Plans plans={config.plans} />
+              <Plans plans={config.plans} onSelectPlan={handlePlanSelect} />
             </motion.div>
           )}
 
@@ -202,7 +221,12 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Contact email={config.contact.email} address={config.contact.address} />
+              <Contact 
+                email={config.contact.email} 
+                address={config.contact.address} 
+                initialPlan={selectedPlan}
+                onPlanSelected={() => setSelectedPlan(undefined)}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -212,8 +236,33 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
           <div className="flex items-center justify-center gap-2">
             <Rocket className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-bold tracking-tighter uppercase italic text-white">Mad Rocket</span>
+            <span className="text-sm font-bold tracking-tighter uppercase italic text-white">MadRocket</span>
           </div>
+
+          {config.socialLinks && (
+            <div className="flex items-center gap-6">
+              {config.socialLinks.instagram && (
+                <a href={config.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                  <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {config.socialLinks.linkedin && (
+                <a href={config.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                  <Linkedin className="w-5 h-5" />
+                </a>
+              )}
+              {config.socialLinks.twitter && (
+                <a href={config.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                  <Twitter className="w-5 h-5" />
+                </a>
+              )}
+              {config.socialLinks.facebook && (
+                <a href={config.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+            </div>
+          )}
           
           <div className="flex flex-col items-center gap-4">
             {loginError && (
@@ -248,7 +297,7 @@ export default function App() {
           </div>
 
           <p className="text-gray-600 text-[10px] uppercase tracking-widest leading-loose">
-            &copy; {new Date().getFullYear()} Mad Rocket Agency. All rights reserved. <br/>
+            &copy; {new Date().getFullYear()} MadRocket Tech & Media. All rights reserved. <br/>
             Engineered for growth in India.
           </p>
         </div>

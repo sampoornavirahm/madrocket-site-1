@@ -54,6 +54,19 @@
             "email": { "type": "string" },
             "address": { "type": "string" }
           }
+        },
+        "clients": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "instagram": { "type": "string" },
+            "linkedin": { "type": "string" },
+            "twitter": { "type": "string" },
+            "facebook": { "type": "string" }
+          }
         }
       },
       "required": ["brand", "hero", "services", "plans"]

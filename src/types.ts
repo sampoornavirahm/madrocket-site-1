@@ -30,6 +30,13 @@ export interface SiteConfig {
     email: string;
     address: string;
   };
+  clients?: string[];
+  socialLinks?: {
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+  };
 }
 
 export interface Enquiry {

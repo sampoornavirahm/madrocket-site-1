@@ -8,7 +8,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
-  const links = ['home', 'services', 'about', 'plans', 'contact'];
+  const links = ['home', 'services', 'clients', 'about', 'plans', 'contact'];
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#050505]/80 backdrop-blur-md border-b border-white/10 px-6 py-4">
@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => 
           whileHover={{ scale: 1.05 }}
         >
           <Rocket className="w-6 h-6 text-blue-500 group-hover:rotate-12 transition-transform" />
-          <span className="text-xl font-bold tracking-tighter uppercase italic">Mad Rocket</span>
+          <span className="text-xl font-bold tracking-tighter uppercase italic">MadRocket</span>
         </motion.div>
         
         <div className="hidden md:flex gap-8">
