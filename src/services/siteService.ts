@@ -90,5 +90,14 @@ export const siteService = {
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, CONFIG_PATH);
     }
+  },
+
+  async updateMarketing(marketing: SiteConfig['marketing']): Promise<void> {
+    try {
+      const docRef = doc(db, CONFIG_PATH);
+      await updateDoc(docRef, { marketing });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, CONFIG_PATH);
+    }
   }
 };

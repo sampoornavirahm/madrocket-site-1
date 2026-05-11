@@ -67,6 +67,14 @@
             "twitter": { "type": "string" },
             "facebook": { "type": "string" }
           }
+        },
+        "marketing": {
+          "type": "object",
+          "properties": {
+            "googleAnalyticsId": { "type": "string" },
+            "googleTagManagerId": { "type": "string" },
+            "metaPixelId": { "type": "string" }
+          }
         }
       },
       "required": ["brand", "hero", "services", "plans"]

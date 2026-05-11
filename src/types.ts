@@ -37,6 +37,11 @@ export interface SiteConfig {
     twitter?: string;
     facebook?: string;
   };
+  marketing?: {
+    googleAnalyticsId?: string;
+    googleTagManagerId?: string;
+    metaPixelId?: string;
+  };
 }
 
 export interface Enquiry {

@@ -1,21 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { siteService } from '../services/siteService';
 import { Enquiry, SiteConfig } from '../types';
-import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw, Database, Plus, Trash2, Users } from 'lucide-react';
+import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw, Database, Plus, Trash2, Users, Target, Save } from 'lucide-react';
 import { DEFAULT_SITE_CONFIG } from '../constants';
 
 export const AdminDashboard: React.FC = () => {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'enquiries' | 'clients'>('enquiries');
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'clients' | 'marketing'>('enquiries');
 
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
   const [planFilter, setPlanFilter] = useState('All Plans');
   const [newClient, setNewClient] = useState('');
+
+  const [marketingState, setMarketingState] = useState({
+    googleAnalyticsId: '',
+    googleTagManagerId: '',
+    metaPixelId: ''
+  });
 
   const fetchData = async (filter?: string) => {
     setLoading(true);
@@ -26,10 +32,30 @@ export const AdminDashboard: React.FC = () => {
       ]);
       setEnquiries(enquiriesData);
       setConfig(configData);
+      if (configData?.marketing) {
+        setMarketingState({
+          googleAnalyticsId: configData.marketing.googleAnalyticsId || '',
+          googleTagManagerId: configData.marketing.googleTagManagerId || '',
+          metaPixelId: configData.marketing.metaPixelId || ''
+        });
+      }
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateMarketing = async () => {
+    try {
+      setSyncing(true);
+      await siteService.updateMarketing(marketingState);
+      setSyncMessage('Marketing credentials updated!');
+      setTimeout(() => setSyncMessage(''), 3000);
+    } catch (error) {
+      alert('Failed to update marketing credentials');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -154,6 +180,14 @@ export const AdminDashboard: React.FC = () => {
           >
             Client Roster
           </button>
+          <button 
+            onClick={() => setActiveTab('marketing')}
+            className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              activeTab === 'marketing' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            Marketing / SEO
+          </button>
         </div>
 
         {activeTab === 'enquiries' ? (
@@ -251,7 +285,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'clients' ? (
           <div className="space-y-8">
             <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8">
               <h4 className="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-500 mb-6">Engage New Client</h4>
@@ -296,7 +330,74 @@ export const AdminDashboard: React.FC = () => {
               ))}
             </div>
           </div>
-        )}
+        ) : (
+          <div className="max-w-3xl space-y-8">
+            <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-12 transition-all hover:border-blue-500/20">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <Target className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-bold text-white tracking-tight">Tracking & Analytics</h4>
+                  <p className="text-xs text-gray-500 uppercase tracking-widest font-medium mt-1">Deploy tracking scripts across your galaxy</p>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-500 pl-1">Google Analytics (G-XXXXXXXXXX)</label>
+                  <input 
+                    type="text"
+                    value={marketingState.googleAnalyticsId}
+                    onChange={(e) => setMarketingState({...marketingState, googleAnalyticsId: e.target.value})}
+                    placeholder="G-XXXXXXX"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-500 pl-1">Google Tag Manager (GTM-XXXXXXX)</label>
+                  <input 
+                    type="text"
+                    value={marketingState.googleTagManagerId}
+                    onChange={(e) => setMarketingState({...marketingState, googleTagManagerId: e.target.value})}
+                    placeholder="GTM-XXXXXXX"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-500 pl-1">Meta Pixel ID</label>
+                  <input 
+                    type="text"
+                    value={marketingState.metaPixelId}
+                    onChange={(e) => setMarketingState({...marketingState, metaPixelId: e.target.value})}
+                    placeholder="1234567890"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={handleUpdateMarketing}
+                    disabled={syncing}
+                    className="w-full py-5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 rounded-2xl text-white font-black uppercase tracking-[0.3em] text-xs flex items-center justify-center gap-3 shadow-[0_20px_40px_-15px_rgba(37,99,235,0.3)] transition-all"
+                  >
+                    {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Lock Mission Credentials
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 border border-white/5 rounded-3xl bg-white/[0.02]">
+              <h5 className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-4">Pro Marketing Tip</h5>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                After saving these credentials, tracking scripts will automatically be deployed to the frontend. Ensure your IDs are correct to prevent any data loss in orbit.
+              </p>
+            </div>
+          </div>
+        ) }
       </div>
     </div>
   );

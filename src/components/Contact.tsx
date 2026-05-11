@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Send, MapPin, Mail, CheckCircle2 } from 'lucide-react';
 import { siteService } from '../services/siteService';
 

@@ -117,5 +117,10 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     linkedin: "https://linkedin.com/company/madrocket",
     twitter: "https://twitter.com/madrocket",
     facebook: "https://facebook.com/madrocket"
+  },
+  marketing: {
+    googleAnalyticsId: "",
+    googleTagManagerId: "",
+    metaPixelId: ""
   }
 };
