@@ -91,6 +91,51 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "plan", "message", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User roles and organizational data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "sales", "lead"] },
+        "status": { "type": "string", "enum": ["pending", "active", "denied"] },
+        "team": { "type": "string" },
+        "batch": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "status"]
+    },
+    "Lead": {
+      "title": "Sales Lead",
+      "description": "Tracking lead status for sales team",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string" },
+        "team": { "type": "string" },
+        "batch": { "type": "string" },
+        "salesRepId": { "type": "string" },
+        "salesRepName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "email", "status", "salesRepId"]
+    },
+    "SystemLog": {
+      "title": "System Log",
+      "description": "Records of administrative and system actions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "action", "details", "timestamp"]
     }
   },
   "firestore": {
@@ -101,6 +146,18 @@
     "/enquiries/{enquiryId}": {
       "schema": "Enquiry",
       "description": "User form submissions"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Role-based user records"
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Sales lead records for tracking"
+    },
+    "/logs/{logId}": {
+      "schema": "SystemLog",
+      "description": "Audit logs for system actions"
     }
   }
 }

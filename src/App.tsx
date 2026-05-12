@@ -8,8 +8,9 @@ import { Plans } from './components/Plans';
 import { Clients } from './components/Clients';
 import { Contact } from './components/Contact';
 import { AdminDashboard } from './components/AdminDashboard';
+import { SalesDashboard } from './components/SalesDashboard';
 import { siteService } from './services/siteService';
-import { SiteConfig } from './types';
+import { SiteConfig, UserProfile } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
 import { Rocket, LogIn, LogOut, User, Instagram, Linkedin, Twitter, Facebook } from 'lucide-react';
 import { auth } from './lib/firebase';
@@ -27,13 +28,52 @@ export default function App() {
   };
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const ADMIN_EMAIL = 'piyush.resoluteai@gmail.com';
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        let profile = await siteService.getUserProfile(u.uid);
+        const normalizedEmail = (u.email || '').toLowerCase().trim();
+        const normalizedAdminEmail = ADMIN_EMAIL.toLowerCase().trim();
+        const isAdmin = normalizedEmail === normalizedAdminEmail;
+        
+        if (!profile) {
+          profile = {
+            uid: u.uid,
+            email: u.email || '',
+            role: isAdmin ? 'admin' : 'sales',
+            status: isAdmin ? 'active' : 'pending',
+            team: null,
+            batch: null
+          };
+          await siteService.createUserProfile(profile);
+          
+          // Log registration protocol
+          try {
+            await siteService.createLog({
+              userId: u.uid,
+              userName: (u.email || 'unknown').split('@')[0],
+              action: 'IDENTITY_REGISTERED',
+              details: `External identity detected & registered: ${u.email}. State: pending`
+            });
+          } catch (logErr) {
+            console.warn("Telemetry log failed during registration", logErr);
+          }
+        } else if (isAdmin && (profile.role !== 'admin' || profile.status !== 'active')) {
+          // Fix admin profile if it's out of sync
+          const updates = { role: 'admin' as const, status: 'active' as const };
+          await siteService.updateUserProfile(u.uid, updates);
+          profile = { ...profile, ...updates };
+        }
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -179,20 +219,70 @@ export default function App() {
 
   if (!config) return null;
 
-  const isAdminUser = user?.email === ADMIN_EMAIL;
+  const role = userProfile?.role || 'sales';
+  const status = userProfile?.status || 'pending';
+  const isGuest = !userProfile;
 
-  if (isAdminUser) {
+  if (!isGuest && (role === 'admin' || role === 'sales' || role === 'lead')) {
+    if (status === 'pending' && role !== 'admin') {
+      return (
+        <div className="h-screen w-full bg-[#050505] flex flex-col items-center justify-center gap-8 p-6 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-4">
+            <Rocket className="w-10 h-10 text-blue-500 animate-bounce" />
+          </div>
+          <div className="space-y-4 max-w-sm">
+            <h1 className="text-3xl font-bold text-white tracking-tighter uppercase italic">Waiting for Activation</h1>
+            <p className="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] leading-loose">
+              Your mission profile for <span className="text-blue-500">{user?.email}</span> is being reviewed by Mission Command. <br/> 
+              You will be granted access once your identity is confirmed.
+            </p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="px-8 py-3 bg-white/5 hover:bg-white/10 rounded-full text-white text-[10px] font-bold uppercase tracking-[0.3em] transition-all"
+          >
+            Switch Account / Logout
+          </button>
+        </div>
+      );
+    }
+
+    if (status === 'denied') {
+      return (
+        <div className="h-screen w-full bg-[#050505] flex flex-col items-center justify-center gap-8 p-6 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center mb-4">
+            <Rocket className="w-10 h-10 text-red-500 rotate-180" />
+          </div>
+          <div className="space-y-4 max-w-sm">
+            <h1 className="text-3xl font-bold text-white tracking-tighter uppercase italic">Access Denied</h1>
+            <p className="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] leading-loose">
+              Your request for access has been declined. <br/> 
+              Contact the administrator if you believe this is an error.
+            </p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="px-8 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-full text-white text-[10px] font-bold uppercase tracking-[0.3em] transition-all"
+          >
+            Switch Account / Logout
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#050505] font-sans selection:bg-blue-500 selection:text-white">
         <header className="fixed top-0 left-0 right-0 z-50 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Rocket className="w-5 h-5 text-blue-500" />
-              <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">MadRocket <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">Admin</span></span>
+              <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">
+                MadRocket <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">{role}</span>
+              </span>
             </div>
             <div className="flex items-center gap-6">
               <span className="hidden md:flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-blue-500">
-                <User className="w-3 h-3" /> {user.email}
+                <User className="w-3 h-3" /> {user?.email}
               </span>
               <button 
                 onClick={handleLogout}
@@ -204,8 +294,18 @@ export default function App() {
           </div>
         </header>
 
-        <main className="pt-24 pb-20">
-          <AdminDashboard />
+        <main className="pt-24 pb-20 px-6">
+          <div className="max-w-7xl mx-auto">
+            {role === 'admin' || role === 'lead' ? (
+              <AdminDashboard config={config} userProfile={userProfile!} />
+            ) : userProfile && (
+              <SalesDashboard 
+                userProfile={userProfile} 
+                teams={config.teams || []} 
+                batches={config.batches || []} 
+              />
+            )}
+          </div>
         </main>
       </div>
     );
@@ -342,7 +442,7 @@ export default function App() {
                 onClick={handleLogin}
                 className="opacity-20 hover:opacity-100 transition-opacity flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest"
               >
-                <LogIn className="w-3 h-3" /> Admin Login
+                <LogIn className="w-3 h-3" /> Login
               </button>
             ) : (
               <div className="flex items-center gap-4">

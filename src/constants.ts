@@ -2,6 +2,8 @@ import { SiteConfig } from './types';
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   brand: "MadRocket",
+  teams: ["School Website", "Real Estate"],
+  batches: ["Batch May-July 2026", "Batch Aug-Oct 2026"],
   hero: {
     title: "We Launch Your Ideas Into Orbit",
     subtitle: "High-performance marketing and premium web solutions designed to scale your business to the stratosphere.",

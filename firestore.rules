@@ -7,10 +7,13 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email == 'piyush.resoluteai@gmail.com' && 
-        request.auth.token.email_verified == true
-      );
+      return isSignedIn() && request.auth.token.email == 'piyush.resoluteai@gmail.com';
+    }
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isLead() {
+      return isSignedIn() && getUserData().role == 'lead';
     }
 
     match /config/site {
@@ -21,6 +24,33 @@ service cloud.firestore {
     match /enquiries/{enquiryId} {
       allow create: if isValidEnquiry(request.resource.data);
       allow read, list, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLead());
+      allow list: if isSignedIn() && (isAdmin() || isLead());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow create: if isSignedIn();
+      allow list, get: if isSignedIn() && (
+        resource.data.salesRepId == request.auth.uid || 
+        isAdmin() || 
+        (isLead() && resource.data.team == getUserData().team)
+      );
+      allow update: if isSignedIn() && (
+        resource.data.salesRepId == request.auth.uid || 
+        isAdmin() || 
+        (isLead() && resource.data.team == getUserData().team)
+      );
+    }
+
+    match /logs/{logId} {
+      allow create: if isSignedIn();
+      allow read, list: if isAdmin();
     }
 
     function isValidEnquiry(data) {
