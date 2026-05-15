@@ -131,15 +131,15 @@ export function PersonnelProfile({ profile, onBack, isAdminView = false }: Perso
               <div className="space-y-4">
                 <div>
                   <span className="profile-label">Institution</span>
-                  <p className="profile-value text-xs">{enrollment.banking.bankName}</p>
+                  <p className="profile-value text-xs">{enrollment.banking?.bankName || 'Awaiting Data'}</p>
                 </div>
                 <div>
                   <span className="profile-label">IFSC Clear Code</span>
-                  <p className="profile-value text-xs font-mono uppercase">{enrollment.banking.ifsc}</p>
+                  <p className="profile-value text-xs font-mono uppercase">{enrollment.banking?.ifsc || 'Awaiting Data'}</p>
                 </div>
                 <div>
                   <span className="profile-label">Account Vector</span>
-                  <p className="profile-value text-xs font-mono truncate">{enrollment.banking.accountNumber}</p>
+                  <p className="profile-value text-xs font-mono truncate">{enrollment.banking?.accountNumber || 'Awaiting Data'}</p>
                 </div>
               </div>
             </div>
@@ -152,15 +152,15 @@ export function PersonnelProfile({ profile, onBack, isAdminView = false }: Perso
               <div className="space-y-4">
                 <div>
                   <span className="profile-label">Primary Contact</span>
-                  <p className="profile-value text-xs">{enrollment.emergencyContact.name}</p>
+                  <p className="profile-value text-xs">{enrollment.emergencyContact?.name || 'Awaiting Data'}</p>
                 </div>
                 <div>
                   <span className="profile-label">Nexus Relation</span>
-                  <p className="profile-value text-xs text-gray-400 italic">{enrollment.emergencyContact.relationship}</p>
+                  <p className="profile-value text-xs text-gray-400 italic">{enrollment.emergencyContact?.relationship || 'Awaiting Data'}</p>
                 </div>
                 <div>
                   <span className="profile-label">Emergency Line</span>
-                  <p className="profile-value text-xs font-mono">{enrollment.emergencyContact.phone}</p>
+                  <p className="profile-value text-xs font-mono">{enrollment.emergencyContact?.phone || 'Awaiting Data'}</p>
                 </div>
               </div>
             </div>

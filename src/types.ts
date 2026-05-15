@@ -13,6 +13,13 @@ export interface Plan {
   highlight?: boolean;
 }
 
+export interface ConfigApp {
+  id: string;
+  title: string;
+  link: string;
+  icon?: string;
+}
+
 export interface SiteConfig {
   brand: string;
   hero: {
@@ -44,6 +51,7 @@ export interface SiteConfig {
   };
   teams?: string[];
   batches?: string[];
+  apps?: ConfigApp[];
 }
 
 export interface Enquiry {

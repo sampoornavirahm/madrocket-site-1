@@ -9,9 +9,10 @@ import { DEFAULT_SITE_CONFIG } from '../constants';
 interface AdminDashboardProps {
   config: SiteConfig;
   userProfile: UserProfile;
+  activeTab: 'enquiries' | 'clients' | 'marketing' | 'leads' | 'team' | 'logs';
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialConfig, userProfile }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialConfig, userProfile, activeTab }) => {
   const isAdminUser = userProfile.role === 'admin';
   const isManagerUser = userProfile.role === 'manager';
 
@@ -20,9 +21,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [config, setConfig] = useState<SiteConfig | null>(initialConfig);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'enquiries' | 'clients' | 'marketing' | 'leads' | 'team' | 'logs'>(
-    isAdminUser ? 'enquiries' : 'leads'
-  );
+
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   const pendingUsers = users.filter(u => {
     const isPending = u.status === 'pending' || !u.status;
@@ -37,13 +42,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     if (isManagerUser) return u.role === 'sales' && u.team === userProfile.team;
     return true;
   });
-
-  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
-
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
 
   const [planFilter, setPlanFilter] = useState('All Plans');
   const [teamFilter, setTeamFilter] = useState(isManagerUser ? (userProfile.team || 'All Teams') : 'All Teams');
@@ -582,66 +580,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
               <RefreshCcw className="w-3 h-3" /> Refresh Data
             </button>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-12 bg-white/5 p-1 rounded-2xl w-fit">
-          {isAdminUser && (
-            <>
-              <button 
-                onClick={() => setActiveTab('enquiries')}
-                className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'enquiries' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                Enquiries
-              </button>
-              <button 
-                onClick={() => setActiveTab('clients')}
-                className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'clients' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                Client Roster
-              </button>
-              <button 
-                onClick={() => setActiveTab('marketing')}
-                className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'marketing' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                Marketing / SEO
-              </button>
-            </>
-          )}
-          <button 
-            onClick={() => setActiveTab('leads')}
-            className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              activeTab === 'leads' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-            }`}
-          >
-            Sales Pipeline
-          </button>
-          {(isAdminUser || isManagerUser) && (
-            <button 
-              onClick={() => setActiveTab('team')}
-              className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeTab === 'team' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-              }`}
-            >
-              Personnel {pendingUsers.length > 0 && <span className="ml-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px] animate-pulse">{pendingUsers.length}</span>}
-            </button>
-          )}
-          {isAdminUser && (
-            <button 
-              onClick={() => setActiveTab('logs')}
-              className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeTab === 'logs' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'
-              }`}
-            >
-              System Logs
-            </button>
-          )}
         </div>
 
         {activeTab === 'enquiries' ? (
@@ -1817,19 +1755,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <span className="info-label">Account Holder</span>
-                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking.holderName}</p>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking?.holderName || 'Pending'}</p>
                       </div>
                       <div>
                         <span className="info-label">Bank Name</span>
-                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking.bankName}</p>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking?.bankName || 'Pending'}</p>
                       </div>
                       <div>
                         <span className="info-label">IFSC Code</span>
-                        <p className="info-value font-mono uppercase">{reviewingEnrollmentUser.enrollment?.banking.ifsc}</p>
+                        <p className="info-value font-mono uppercase">{reviewingEnrollmentUser.enrollment?.banking?.ifsc || 'Pending'}</p>
                       </div>
                       <div className="col-span-2">
                         <span className="info-label">Account Number</span>
-                        <p className="info-value font-mono">{reviewingEnrollmentUser.enrollment?.banking.accountNumber}</p>
+                        <p className="info-value font-mono">{reviewingEnrollmentUser.enrollment?.banking?.accountNumber || 'Pending'}</p>
                       </div>
                     </div>
                   </div>
@@ -1851,9 +1789,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                       <div className="p-4 bg-red-500/5 rounded-2xl border border-red-500/10">
                         <p className="text-[8px] font-black text-red-500 uppercase tracking-widest mb-2">Emergency Protocol Contact</p>
                         <div className="grid grid-cols-2 gap-2">
-                          <p className="text-white text-xs font-bold">{reviewingEnrollmentUser.enrollment?.emergencyContact.name}</p>
-                          <p className="text-gray-500 text-xs text-right italic">{reviewingEnrollmentUser.enrollment?.emergencyContact.relationship}</p>
-                          <p className="text-white font-mono text-[11px] col-span-2 mt-1">{reviewingEnrollmentUser.enrollment?.emergencyContact.phone}</p>
+                          <p className="text-white text-xs font-bold">{reviewingEnrollmentUser.enrollment?.emergencyContact?.name || 'Pending'}</p>
+                          <p className="text-gray-500 text-xs text-right italic">{reviewingEnrollmentUser.enrollment?.emergencyContact?.relationship || 'Pending'}</p>
+                          <p className="text-white font-mono text-[11px] col-span-2 mt-1">{reviewingEnrollmentUser.enrollment?.emergencyContact?.phone || 'Pending'}</p>
                         </div>
                       </div>
                     </div>

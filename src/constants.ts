@@ -124,5 +124,13 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     googleAnalyticsId: "",
     googleTagManagerId: "",
     metaPixelId: ""
-  }
+  },
+  apps: [
+    { id: '1', title: 'HR Portal', link: 'https://hr.madrocket.in', icon: 'ShieldCheck' },
+    { id: '2', title: 'CRM Terminal', link: 'https://crm.madrocket.in', icon: 'Target' },
+    { id: '3', title: 'Project Grid', link: 'https://projects.madrocket.in', icon: 'Grid' },
+    { id: '4', title: 'Mail System', link: 'https://mail.madrocket.in', icon: 'Mail' },
+    { id: '5', title: 'Asset Library', link: 'https://assets.madrocket.in', icon: 'Folder' },
+    { id: '6', title: 'Support Desk', link: 'https://support.madrocket.in', icon: 'LifeBuoy' }
+  ]
 };

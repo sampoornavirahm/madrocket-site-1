@@ -12,6 +12,8 @@ import { SalesDashboard } from './components/SalesDashboard';
 import { InternEnrollmentForm } from './components/InternEnrollmentForm';
 import { OnboardingPortal } from './components/OnboardingPortal';
 import { PersonnelProfile } from './components/PersonnelProfile';
+import { Sidebar, ViewId } from './components/Sidebar';
+import { AppsView } from './components/AppsView';
 import { siteService } from './services/siteService';
 import { SiteConfig, UserProfile } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
@@ -33,12 +35,42 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [dashboardView, setDashboardView] = useState<'main' | 'profile'>('main');
+  const [dashboardView, setDashboardView] = useState<ViewId>('main');
+  const [pendingCount, setPendingCount] = useState(0);
 
   const ADMIN_EMAILS = [
     'piyush.resoluteai@gmail.com',
     'friendswatchgotforfree@gmail.com'
   ];
+
+  const role = userProfile?.role || 'sales';
+  const status = userProfile?.status || 'pending';
+  const isGuest = !userProfile;
+
+  useEffect(() => {
+    // Fetch pending users periodically if admin/manager
+    if (userProfile && (role === 'admin' || role === 'manager')) {
+      const fetchPending = async () => {
+        try {
+          const filter = role === 'manager' ? userProfile.team : undefined;
+          const allUsers = await siteService.getAllUsers(filter);
+          const pending = allUsers.filter(u => {
+            const isPending = u.status === 'pending' || !u.status;
+            if (!isPending) return false;
+            if (role === 'manager') return u.role === 'sales';
+            return true;
+          });
+          setPendingCount(pending.length);
+        } catch (error) {
+          console.warn("Failed to fetch pending count for sidebar", error);
+        }
+      };
+
+      fetchPending();
+      const interval = setInterval(fetchPending, 30000); // 30s
+      return () => clearInterval(interval);
+    }
+  }, [userProfile, role]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -226,10 +258,6 @@ export default function App() {
 
   if (!config) return null;
 
-  const role = userProfile?.role || 'sales';
-  const status = userProfile?.status || 'pending';
-  const isGuest = !userProfile;
-
   if (!isGuest && (role === 'admin' || role === 'sales' || role === 'manager')) {
     if (status === 'pending' && role !== 'admin') {
       return (
@@ -278,9 +306,18 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen bg-[#050505] font-sans selection:bg-blue-500 selection:text-white">
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="min-h-screen bg-[#050505] flex">
+        <Sidebar 
+          activeView={dashboardView} 
+          onViewChange={setDashboardView} 
+          onLogout={handleLogout}
+          userEmail={user.email || 'unknown'}
+          role={role as any}
+          pendingCount={pendingCount}
+        />
+
+        <div className="flex-1 flex flex-col h-screen overflow-hidden">
+          <header className="h-20 border-b border-white/5 bg-black/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0">
             <div className="flex items-center gap-2">
               <Rocket className="w-5 h-5 text-blue-500" />
               <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">
@@ -288,59 +325,51 @@ export default function App() {
               </span>
             </div>
             <div className="flex items-center gap-6">
-              {userProfile?.enrollment && (
-                <button 
-                  onClick={() => setDashboardView(dashboardView === 'profile' ? 'main' : 'profile')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    dashboardView === 'profile' 
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                      : 'bg-white/5 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <User className="w-3 h-3" /> {dashboardView === 'profile' ? 'Dashboard' : 'Personnel Record'}
-                </button>
-              )}
               <span className="hidden md:flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-blue-500">
                 <User className="w-3 h-3" /> {user?.email}
               </span>
-              <button 
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-white text-[10px] font-bold uppercase tracking-widest transition-all"
-              >
-                <LogOut className="w-3 h-3" /> Logout
-              </button>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="pt-24 pb-20 px-6">
-          <div className="max-w-7xl mx-auto">
-            {dashboardView === 'profile' ? (
-              <PersonnelProfile 
-                profile={userProfile!} 
-                onBack={() => setDashboardView('main')} 
-              />
-            ) : role === 'admin' || role === 'manager' ? (
-              <AdminDashboard config={config} userProfile={userProfile!} />
-            ) : userProfile.enrollment?.status === 'approved' && userProfile.enrollment?.onboarding?.onboardingStatus !== 'completed' ? (
-              <OnboardingPortal 
-                userProfile={userProfile} 
-                onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)}
-              />
-            ) : userProfile.isEnrollmentActive && (!userProfile.enrollment || userProfile.enrollment.status === 'none') ? (
-              <InternEnrollmentForm 
-                userProfile={userProfile} 
-                onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)} 
-              />
-            ) : (
-              <SalesDashboard 
-                userProfile={userProfile} 
-                teams={config.teams || []} 
-                batches={config.batches || []} 
-              />
-            )}
-          </div>
-        </main>
+          <main className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar">
+            <div className="p-6">
+              {dashboardView === 'profile' ? (
+                <PersonnelProfile 
+                  profile={userProfile} 
+                  onBack={() => setDashboardView('main')} 
+                />
+              ) : dashboardView === 'apps' ? (
+                <AppsView 
+                  apps={config.apps || []} 
+                  isAdmin={role === 'admin'} 
+                  onUpdate={(updatedApps) => setConfig({ ...config, apps: updatedApps })}
+                />
+              ) : ['enquiries', 'clients', 'marketing', 'leads', 'team', 'logs'].includes(dashboardView) ? (
+                <AdminDashboard 
+                  config={config} 
+                  userProfile={userProfile} 
+                  activeTab={dashboardView as any} 
+                />
+              ) : userProfile.enrollment?.status === 'approved' && userProfile.enrollment?.onboarding?.onboardingStatus !== 'completed' ? (
+                <OnboardingPortal 
+                  userProfile={userProfile} 
+                  onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)}
+                />
+              ) : userProfile.isEnrollmentActive && (!userProfile.enrollment || userProfile.enrollment.status === 'none') ? (
+                <InternEnrollmentForm 
+                  userProfile={userProfile} 
+                  onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)} 
+                />
+              ) : (
+                <SalesDashboard 
+                  userProfile={userProfile} 
+                  teams={config.teams || []} 
+                  batches={config.batches || []} 
+                />
+              )}
+            </div>
+          </main>
+        </div>
       </div>
     );
   }

@@ -120,6 +120,15 @@ export const siteService = {
     }
   },
 
+  async updateConfig(updates: Partial<SiteConfig>): Promise<void> {
+    try {
+      const docRef = doc(db, CONFIG_PATH);
+      await updateDoc(docRef, updates);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, CONFIG_PATH);
+    }
+  },
+
   async updateOrganization(data: { teams?: string[], batches?: string[] }): Promise<void> {
     try {
       const docRef = doc(db, CONFIG_PATH);
