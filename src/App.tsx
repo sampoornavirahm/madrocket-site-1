@@ -10,6 +10,8 @@ import { Contact } from './components/Contact';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SalesDashboard } from './components/SalesDashboard';
 import { InternEnrollmentForm } from './components/InternEnrollmentForm';
+import { OnboardingPortal } from './components/OnboardingPortal';
+import { PersonnelProfile } from './components/PersonnelProfile';
 import { siteService } from './services/siteService';
 import { SiteConfig, UserProfile } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
@@ -31,6 +33,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [dashboardView, setDashboardView] = useState<'main' | 'profile'>('main');
 
   const ADMIN_EMAILS = [
     'piyush.resoluteai@gmail.com',
@@ -281,10 +284,22 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Rocket className="w-5 h-5 text-blue-500" />
               <span className="text-xl font-bold tracking-tighter uppercase italic text-white leading-none">
-                MadRocket <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">{role}</span>
+                Madrocket Tech & Media <span className="text-blue-500 text-[10px] uppercase tracking-widest not-italic align-top ml-2">{role}</span>
               </span>
             </div>
             <div className="flex items-center gap-6">
+              {userProfile?.enrollment && (
+                <button 
+                  onClick={() => setDashboardView(dashboardView === 'profile' ? 'main' : 'profile')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    dashboardView === 'profile' 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                      : 'bg-white/5 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <User className="w-3 h-3" /> {dashboardView === 'profile' ? 'Dashboard' : 'Personnel Record'}
+                </button>
+              )}
               <span className="hidden md:flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-blue-500">
                 <User className="w-3 h-3" /> {user?.email}
               </span>
@@ -300,8 +315,18 @@ export default function App() {
 
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-7xl mx-auto">
-            {role === 'admin' || role === 'manager' ? (
+            {dashboardView === 'profile' ? (
+              <PersonnelProfile 
+                profile={userProfile!} 
+                onBack={() => setDashboardView('main')} 
+              />
+            ) : role === 'admin' || role === 'manager' ? (
               <AdminDashboard config={config} userProfile={userProfile!} />
+            ) : userProfile.enrollment?.status === 'approved' && userProfile.enrollment?.onboarding?.onboardingStatus !== 'completed' ? (
+              <OnboardingPortal 
+                userProfile={userProfile} 
+                onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)}
+              />
             ) : userProfile.isEnrollmentActive && (!userProfile.enrollment || userProfile.enrollment.status === 'none') ? (
               <InternEnrollmentForm 
                 userProfile={userProfile} 
@@ -408,7 +433,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
           <div className="flex items-center justify-center gap-2">
             <Rocket className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-bold tracking-tighter uppercase italic text-white">MadRocket</span>
+            <span className="text-sm font-bold tracking-tighter uppercase italic text-white">Madrocket Tech & Media</span>
           </div>
 
           {config.socialLinks && (
@@ -469,8 +494,8 @@ export default function App() {
           </div>
 
           <p className="text-gray-600 text-[10px] uppercase tracking-widest leading-loose">
-            &copy; {new Date().getFullYear()} MadRocket Tech & Media. All rights reserved. <br/>
-            Engineered for growth in India.
+            &copy; {new Date().getFullYear()} Madrocket Technologies & Media. All rights reserved. <br/>
+            AI • Engineering • Digital Transformation
           </p>
         </div>
       </footer>

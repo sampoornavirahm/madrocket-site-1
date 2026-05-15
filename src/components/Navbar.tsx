@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => 
           whileHover={{ scale: 1.05 }}
         >
           <Rocket className="w-6 h-6 text-blue-500 group-hover:rotate-12 transition-transform" />
-          <span className="text-xl font-bold tracking-tighter uppercase italic">MadRocket</span>
+          <span className="text-xl font-bold tracking-tighter uppercase italic">Madrocket Tech & Media</span>
         </motion.div>
         
         <div className="hidden md:flex gap-8">

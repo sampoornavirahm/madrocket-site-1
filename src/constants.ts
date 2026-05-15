@@ -1,7 +1,7 @@
 import { SiteConfig } from './types';
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
-  brand: "MadRocket",
+  brand: "Madrocket Technologies & Media",
   teams: ["School Website", "Real Estate"],
   batches: ["Batch May-July 2026", "Batch Aug-Oct 2026"],
   hero: {
@@ -93,7 +93,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   ],
   about: {
     title: "Built for Success",
-    content: "At MadRocket, we don't just build websites; we build growth engines. Based in India, we work with ambitious entrepreneurs to turn their vision into market-leading digital realities."
+    content: "At Madrocket Technologies & Media, we don't just build websites; we build growth engines powered by AI and modern engineering. Based in India, we work with ambitious entrepreneurs to turn their vision into market-leading digital realities through digital transformation."
   },
   contact: {
     email: "hello@madrocket.in",

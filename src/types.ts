@@ -58,8 +58,38 @@ export type UserRole = 'admin' | 'sales' | 'manager';
 
 export interface InternEnrollment {
   fullName: string;
+  dob: string;
+  gender: string;
+  mobile: string;
+  personalEmail: string;
   address: string;
-  education: string;
+  permanentAddress: string;
+  photoUrl?: string;
+  
+  // Govt IDs
+  aadhaarNumber: string;
+  panNumber: string;
+  
+  // Emergency
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  
+  // Banking
+  banking: {
+    holderName: string;
+    bankName: string;
+    accountNumber: string;
+    ifsc: string;
+  };
+
+  // Education
+  highestQualification: string;
+  degreeCertificateUrl?: string;
+
+  education: string; // Keep for legacy if needed or summary
   skills: string;
   startDate: string;
   submittedAt: any;
@@ -72,6 +102,13 @@ export interface InternEnrollment {
       value: number;
       description: string;
     };
+  };
+  onboarding?: {
+    offerLetterUrl?: string;
+    signedOfferLetterUrl?: string;
+    signedNdaUrl?: string;
+    policiesAccepted?: boolean;
+    onboardingStatus: 'awaiting_dispatch' | 'awaiting_intern_signature' | 'completed';
   };
 }
 

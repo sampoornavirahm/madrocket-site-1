@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { siteService } from '../services/siteService';
 import { Enquiry, SiteConfig, Lead, UserProfile, LeadStatus, SystemLog } from '../types';
+import { PersonnelProfile } from './PersonnelProfile';
 import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw, Database, Plus, Trash2, Users, Target, Save, BarChart3, TrendingUp, Shield, Orbit, Activity, MessageCircle, CheckCircle2, X, MoreVertical, ClipboardList } from 'lucide-react';
 import { DEFAULT_SITE_CONFIG } from '../constants';
 
@@ -80,6 +81,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
   
   // Review Modal State
   const [reviewingEnrollmentUser, setReviewingEnrollmentUser] = useState<UserProfile | null>(null);
+  const [viewingProfileUser, setViewingProfileUser] = useState<UserProfile | null>(null);
   const [stipendConfig, setStipendConfig] = useState({
     fixed: 0,
     variableType: 'amount' as 'amount' | 'percentage',
@@ -1399,8 +1401,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                             <option value="manager" className="bg-black">Manager</option>
                           </select>
                         </td>
-                        <td className="px-6 py-6 transition-all">
-                          <div className="flex items-center gap-2">
+                        <td className="px-6 py-6 border-transparent">
+                          <div className="flex items-center gap-2 relative">
                              {!u.isEnrollmentActive && (u.status === 'active' || !u.status) && (
                                <button 
                                  type="button"
@@ -1408,7 +1410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                                    e.stopPropagation();
                                    setEnrollmentActionUser(u);
                                  }}
-                                 className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-blue-500/20 cursor-pointer relative z-50 transition-all active:scale-95"
+                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 cursor-pointer relative z-[100] transition-all hover:-translate-y-0.5 active:scale-95 inline-flex items-center whitespace-nowrap"
                                >
                                  Activate Intern Form
                                </button>
@@ -1420,14 +1422,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                                    e.stopPropagation();
                                    setReviewingEnrollmentUser(u);
                                  }}
-                                 className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest border border-orange-500/20 cursor-pointer relative z-50 transition-all active:scale-95"
+                                 className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 cursor-pointer relative z-[100] transition-all hover:-translate-y-0.5 active:scale-95 inline-flex items-center whitespace-nowrap"
                                >
                                  Review Enrollment
                                </button>
                              )}
-                             {(u.enrollment?.status === 'approved' || u.enrollment?.status === 'declined') && (
-                               <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest italic">
-                                 Form Processed
+                              {(u.enrollment?.status === 'approved' || u.enrollment?.status === 'declined') && (
+                               <button 
+                                 type="button"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setViewingProfileUser(u);
+                                 }}
+                                 className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/5 cursor-pointer relative z-[100] transition-all hover:-translate-y-0.5 active:scale-95 inline-flex items-center whitespace-nowrap"
+                               >
+                                 View Dossier
+                               </button>
+                             )}
+                             {u.enrollment?.status === 'approved' && (
+                               <div className="flex flex-col gap-1">
+                                 <span className="text-[8px] text-green-500 font-black uppercase tracking-widest italic flex items-center gap-2">
+                                   <CheckCircle2 className="w-3 h-3" /> Offer Dispatched
+                                 </span>
+                                 <span className={`text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md w-fit ${
+                                   u.enrollment?.onboarding?.onboardingStatus === 'completed' 
+                                     ? 'bg-green-500/10 text-green-400 border border-green-500/10' 
+                                     : 'bg-orange-500/10 text-orange-400 border border-orange-500/10'
+                                 }`}>
+                                   Onboarding: {u.enrollment?.onboarding?.onboardingStatus?.replace(/_/g, ' ') || 'Awaiting'}
+                                 </span>
+                               </div>
+                             )}
+                             {u.enrollment?.status === 'declined' && (
+                               <span className="text-[8px] text-red-500 font-black uppercase tracking-widest italic flex items-center gap-2">
+                                 <X className="w-3 h-3" /> Application Rejected
                                </span>
                              )}
                           </div>
@@ -1671,47 +1699,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
 
         {/* Intern Enrollment Modals */}
         {enrollmentActionUser && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-10 max-w-md w-full shadow-[0_30px_60px_-15px_rgba(0,0,0,1)]"
             >
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-                  <ClipboardList className="w-6 h-6" />
+              <div className="flex items-center gap-6 mb-8">
+                <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
+                  <ClipboardList className="w-7 h-7" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-white tracking-tight">Activate Intern Form</h4>
-                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">Invitation for: {enrollmentActionUser.email}</p>
+                  <h4 className="text-2xl font-black text-white tracking-tighter uppercase italic leading-none">Activate <br/> Intern Form</h4>
+                  <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mt-2">{enrollmentActionUser.email}</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 pl-1">Invitation Note / Comment</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 ml-1">HQ Instructions / Invitation Note</label>
                   <textarea 
                     value={enrollmentComment}
                     onChange={(e) => setEnrollmentComment(e.target.value)}
-                    placeholder="Provide context or instructions for the intern..."
-                    className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm outline-none focus:border-blue-500 transition-all resize-none"
+                    placeholder="Provide specific context for the intern..."
+                    className="w-full h-32 bg-black border border-white/5 rounded-2xl px-6 py-4 text-white text-sm outline-none focus:border-blue-500/50 transition-all resize-none shadow-inner"
                   />
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 pt-4">
                   <button 
                     onClick={() => { setEnrollmentActionUser(null); setEnrollmentComment(''); }}
-                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-400 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all"
+                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-500 font-bold uppercase tracking-widest text-[9px] rounded-2xl transition-all"
                   >
-                    Abort
+                    Cancel
                   </button>
                   <button 
                     onClick={handleActivateEnrollment}
                     disabled={isProcessingEnrollment || !enrollmentComment.trim()}
-                    className="flex-1 py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[9px] rounded-2xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2"
                   >
                     {isProcessingEnrollment ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                    Activate Form
+                    Confirm Activation
                   </button>
                 </div>
               </div>
@@ -1720,62 +1748,142 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
         )}
 
         {reviewingEnrollmentUser && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md overflow-y-auto">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-2xl w-full shadow-2xl my-8"
+              className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-10 max-w-2xl w-full shadow-[0_30px_100px_-15px_rgba(0,0,0,1)] my-8"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                    <Orbit className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-10 pb-10 border-b border-white/5">
+                <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20">
+                    <Orbit className="w-7 h-7" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-white tracking-tight">Review Enrollment</h4>
-                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Candidacy: {reviewingEnrollmentUser.enrollment?.fullName}</p>
+                    <h4 className="text-2xl font-black text-white tracking-tighter uppercase italic leading-none">Review <br/> Enrollment</h4>
+                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mt-2">Candidacy: {reviewingEnrollmentUser.enrollment?.fullName}</p>
                   </div>
                 </div>
-                <button onClick={() => setReviewingEnrollmentUser(null)} className="text-gray-500 hover:text-white p-2">
-                  <X className="w-6 h-6" />
+                <button onClick={() => setReviewingEnrollmentUser(null)} className="text-gray-500 hover:text-white p-3 hover:bg-white/5 rounded-full transition-all">
+                  <X className="w-7 h-7" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-white/5">
-                <div className="space-y-4">
-                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 border-b border-white/10 pb-2">Personal Intelligence</h5>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Full Name</span>
-                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.fullName}</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 h-[60vh] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-white/10">
+                {/* Section 1: Basic & Identity */}
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 border-b border-white/10 pb-2">I. Identity Profile</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="info-label">Full Legal Name</span>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.fullName}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Date of Birth</span>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.dob}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Gender</span>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.gender}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Personal Email</span>
+                        <p className="info-value lowercase">{reviewingEnrollmentUser.enrollment?.personalEmail}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Mobile Number</span>
+                        <p className="info-value font-mono">{reviewingEnrollmentUser.enrollment?.mobile}</p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Residential Address</span>
-                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.address}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 border-b border-white/10 pb-2">II. Government Clearance</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="info-label">Aadhaar Number</span>
+                        <p className="info-value font-mono tracking-widest">{reviewingEnrollmentUser.enrollment?.aadhaarNumber}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">PAN Number</span>
+                        <p className="info-value font-mono tracking-widest uppercase">{reviewingEnrollmentUser.enrollment?.panNumber}</p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Proposed Start</span>
-                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.startDate}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500 border-b border-white/10 pb-2">III. Payroll & Banking</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <span className="info-label">Account Holder</span>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking.holderName}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Bank Name</span>
+                        <p className="info-value">{reviewingEnrollmentUser.enrollment?.banking.bankName}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">IFSC Code</span>
+                        <p className="info-value font-mono uppercase">{reviewingEnrollmentUser.enrollment?.banking.ifsc}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="info-label">Account Number</span>
+                        <p className="info-value font-mono">{reviewingEnrollmentUser.enrollment?.banking.accountNumber}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 border-b border-white/10 pb-2">Academic & Technical</h5>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Education Background</span>
-                      <p className="text-gray-300 text-sm italic">"{reviewingEnrollmentUser.enrollment?.education}"</p>
+
+                {/* Section 2: Contact & Academic */}
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 border-b border-white/10 pb-2">IV. Locality & Emergency</h5>
+                    <div className="space-y-4">
+                      <div>
+                        <span className="info-label">Current Address</span>
+                        <p className="info-value italic text-[11px]">"{reviewingEnrollmentUser.enrollment?.address}"</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Permanent Address</span>
+                        <p className="info-value italic text-[11px]">"{reviewingEnrollmentUser.enrollment?.permanentAddress}"</p>
+                      </div>
+                      <div className="p-4 bg-red-500/5 rounded-2xl border border-red-500/10">
+                        <p className="text-[8px] font-black text-red-500 uppercase tracking-widest mb-2">Emergency Protocol Contact</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <p className="text-white text-xs font-bold">{reviewingEnrollmentUser.enrollment?.emergencyContact.name}</p>
+                          <p className="text-gray-500 text-xs text-right italic">{reviewingEnrollmentUser.enrollment?.emergencyContact.relationship}</p>
+                          <p className="text-white font-mono text-[11px] col-span-2 mt-1">{reviewingEnrollmentUser.enrollment?.emergencyContact.phone}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Core Competencies</span>
-                      <p className="text-white text-sm leading-relaxed">{reviewingEnrollmentUser.enrollment?.skills}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-500 border-b border-white/10 pb-2">V. Academic Background</h5>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="info-label">Highest Qualification</span>
+                        <p className="info-value text-purple-200">{reviewingEnrollmentUser.enrollment?.highestQualification}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Detailed Education</span>
+                        <p className="info-value text-gray-400 text-[11px]">{reviewingEnrollmentUser.enrollment?.education}</p>
+                      </div>
+                      <div>
+                        <span className="info-label">Technical Competencies</span>
+                        <p className="info-value text-sm leading-relaxed">{reviewingEnrollmentUser.enrollment?.skills}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6 mb-8">
-                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 border-b border-white/10 pb-2">Stipend Configuration (Required for Approval)</h5>
+              <div className="space-y-6 pt-6 border-t border-white/10 mb-8">
+                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center justify-between">
+                  <span>Stipend Configuration</span>
+                  <span className="text-gray-500 italic">Mandatory for authorization</span>
+                </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[8px] uppercase font-black text-gray-500 tracking-widest ml-1">Fixed Stipend (INR)</label>
@@ -1849,6 +1957,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
             </motion.div>
           </div>
         )}
+        {/* Personnel Profile Modal */}
+        {viewingProfileUser && (
+          <div className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-xl overflow-y-auto">
+            <div className="min-h-screen py-20 relative">
+               <button 
+                onClick={() => setViewingProfileUser(null)}
+                className="fixed top-8 right-8 z-[260] p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all border border-white/10"
+               >
+                 <X className="w-8 h-8" />
+               </button>
+               <div className="max-w-7xl mx-auto px-6">
+                 <div className="flex items-center gap-6 mb-12 ml-6">
+                    <div className="w-16 h-16 rounded-[2rem] bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-500">
+                      <Users className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h2 className="text-4xl font-black text-white tracking-tighter uppercase italic leading-none">Personnel <br/> Intelligence</h2>
+                      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-3">Accessing secure dossiers for: {viewingProfileUser.email}</p>
+                    </div>
+                 </div>
+                 <div className="bg-[#050505] rounded-[3rem] border border-white/5">
+                   <PersonnelProfile profile={viewingProfileUser} isAdminView={true} />
+                 </div>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Styles for review modal */}
+        <style>{`
+          .info-label {
+            display: block;
+            font-size: 8px;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: #4b5563;
+            letter-spacing: 0.1em;
+            margin-bottom: 2px;
+          }
+          .info-value {
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+          }
+          .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+          }
+          .scrollbar-thin::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+          }
+          .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+          }
+        `}</style>
         </div>
       </div>
     </div>

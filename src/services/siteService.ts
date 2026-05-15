@@ -321,16 +321,26 @@ export const siteService = {
     }
   },
 
-  async submitEnrollment(uid: string, data: Omit<UserProfile['enrollment'], 'status' | 'submittedAt'>): Promise<void> {
+  async submitEnrollment(uid: string, data: any): Promise<void> {
     const path = `users/${uid}`;
     try {
       const docRef = doc(db, 'users', uid);
       await updateDoc(docRef, {
-        'enrollment.fullName': data?.fullName,
-        'enrollment.address': data?.address,
-        'enrollment.education': data?.education,
-        'enrollment.skills': data?.skills,
-        'enrollment.startDate': data?.startDate,
+        'enrollment.fullName': data.fullName,
+        'enrollment.dob': data.dob,
+        'enrollment.gender': data.gender,
+        'enrollment.mobile': data.mobile,
+        'enrollment.personalEmail': data.personalEmail,
+        'enrollment.address': data.address,
+        'enrollment.permanentAddress': data.permanentAddress,
+        'enrollment.aadhaarNumber': data.aadhaarNumber,
+        'enrollment.panNumber': data.panNumber,
+        'enrollment.emergencyContact': data.emergencyContact,
+        'enrollment.banking': data.banking,
+        'enrollment.highestQualification': data.highestQualification,
+        'enrollment.education': data.education,
+        'enrollment.skills': data.skills,
+        'enrollment.startDate': data.startDate,
         'enrollment.submittedAt': serverTimestamp(),
         'enrollment.status': 'pending'
       });
@@ -339,23 +349,41 @@ export const siteService = {
     }
   },
 
-  async reviewEnrollment(uid: string, result: 'approved' | 'declined', stipend?: UserProfile['enrollment']['stipend']): Promise<void> {
+  async reviewEnrollment(uid: string, result: 'approved' | 'declined', stipend?: any): Promise<void> {
     const path = `users/${uid}`;
     try {
       const docRef = doc(db, 'users', uid);
       if (result === 'approved') {
         await updateDoc(docRef, {
           'enrollment.status': 'approved',
-          'enrollment.stipend': stipend
+          'enrollment.stipend': stipend,
+          'enrollment.onboarding': {
+            offerLetterUrl: 'https://example.com/assets/generic_offer_letter.pdf', // Mock template
+            onboardingStatus: 'awaiting_intern_signature'
+          }
         });
-        // In a real app, this would trigger an email. Here we just log it.
         console.log(`Sending internship offer letter to user ${uid}`);
       } else {
         await updateDoc(docRef, {
           'enrollment.status': 'declined',
-          status: 'denied' // Deactivate user
+          status: 'denied'
         });
       }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async submitOnboardingDocs(uid: string, data: { signedOfferLetterUrl: string, signedNdaUrl: string }): Promise<void> {
+    const path = `users/${uid}`;
+    try {
+      const docRef = doc(db, 'users', uid);
+      await updateDoc(docRef, {
+        'enrollment.onboarding.signedOfferLetterUrl': data.signedOfferLetterUrl,
+        'enrollment.onboarding.signedNdaUrl': data.signedNdaUrl,
+        'enrollment.onboarding.policiesAccepted': true,
+        'enrollment.onboarding.onboardingStatus': 'completed'
+      });
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, path);
     }
