@@ -161,9 +161,16 @@ export const siteService = {
       if (filters.salesRepId) {
         q = query(q, where('salesRepId', '==', filters.salesRepId));
       }
-      if (filters.team && filters.team !== 'All Teams') {
-        q = query(q, where('team', '==', filters.team));
+      
+      // If team is null but provided, filter for null
+      if (filters.team !== undefined) {
+        if (filters.team === 'All Teams') {
+           // Admin Case - broad query allowed by rules
+        } else {
+           q = query(q, where('team', '==', filters.team));
+        }
       }
+      
       if (filters.batch && filters.batch !== 'All Batches') {
         q = query(q, where('batch', '==', filters.batch));
       }
@@ -232,10 +239,13 @@ export const siteService = {
     }
   },
 
-  async getAllUsers(): Promise<UserProfile[]> {
+  async getAllUsers(team?: string): Promise<UserProfile[]> {
     const path = 'users';
     try {
-      const q = query(collection(db, path));
+      let q = query(collection(db, path));
+      if (team) {
+        q = query(q, where('team', '==', team));
+      }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as UserProfile);
     } catch (e) {
@@ -244,9 +254,12 @@ export const siteService = {
     }
   },
 
-  subscribeAllUsers(callback: (users: UserProfile[]) => void, onError?: (error: any) => void): () => void {
+  subscribeAllUsers(callback: (users: UserProfile[]) => void, team?: string, onError?: (error: any) => void): () => void {
     const path = 'users';
-    const q = query(collection(db, path));
+    let q = query(collection(db, path));
+    if (team) {
+      q = query(q, where('team', '==', team));
+    }
     return onSnapshot(q, (snapshot) => {
       const users = snapshot.docs.map(doc => doc.data() as UserProfile);
       callback(users);
@@ -263,9 +276,15 @@ export const siteService = {
     if (filters.salesRepId) {
       q = query(q, where('salesRepId', '==', filters.salesRepId));
     }
-    if (filters.team && filters.team !== 'All Teams') {
-      q = query(q, where('team', '==', filters.team));
+    
+    if (filters.team !== undefined) {
+      if (filters.team === 'All Teams') {
+        // Admin allowed
+      } else {
+        q = query(q, where('team', '==', filters.team));
+      }
     }
+    
     if (filters.batch && filters.batch !== 'All Batches') {
       q = query(q, where('batch', '==', filters.batch));
     }
@@ -283,6 +302,60 @@ export const siteService = {
     try {
       const docRef = doc(db, 'users', uid);
       await updateDoc(docRef, updates);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async activateEnrollment(uid: string, comment: string): Promise<void> {
+    const path = `users/${uid}`;
+    try {
+      const docRef = doc(db, 'users', uid);
+      await updateDoc(docRef, {
+        isEnrollmentActive: true,
+        'enrollment.comment': comment,
+        'enrollment.status': 'none'
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async submitEnrollment(uid: string, data: Omit<UserProfile['enrollment'], 'status' | 'submittedAt'>): Promise<void> {
+    const path = `users/${uid}`;
+    try {
+      const docRef = doc(db, 'users', uid);
+      await updateDoc(docRef, {
+        'enrollment.fullName': data?.fullName,
+        'enrollment.address': data?.address,
+        'enrollment.education': data?.education,
+        'enrollment.skills': data?.skills,
+        'enrollment.startDate': data?.startDate,
+        'enrollment.submittedAt': serverTimestamp(),
+        'enrollment.status': 'pending'
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async reviewEnrollment(uid: string, result: 'approved' | 'declined', stipend?: UserProfile['enrollment']['stipend']): Promise<void> {
+    const path = `users/${uid}`;
+    try {
+      const docRef = doc(db, 'users', uid);
+      if (result === 'approved') {
+        await updateDoc(docRef, {
+          'enrollment.status': 'approved',
+          'enrollment.stipend': stipend
+        });
+        // In a real app, this would trigger an email. Here we just log it.
+        console.log(`Sending internship offer letter to user ${uid}`);
+      } else {
+        await updateDoc(docRef, {
+          'enrollment.status': 'declined',
+          status: 'denied' // Deactivate user
+        });
+      }
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, path);
     }

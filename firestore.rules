@@ -5,53 +5,83 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- SHARED HELPERS ---
     function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Admin check: utilizing role field for dynamic permissions
+    // with hardcoded fallback for first-time bootstrap.
     function isAdmin() { 
-      return isSignedIn() && request.auth.token.email == 'piyush.resoluteai@gmail.com';
+      return isSignedIn() && (
+        request.auth.token.email == 'piyush.resoluteai@gmail.com' ||
+        request.auth.token.email == 'friendswatchgotforfree@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
     }
+    
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    function isLead() {
-      return isSignedIn() && getUserData().role == 'lead';
+    
+    function isManager() {
+      let data = getUserData();
+      return isSignedIn() && data.role == 'manager';
     }
+
+    // --- COLLECTIONS ---
 
     match /config/site {
       allow read: if true;
       allow write: if isAdmin();
     }
 
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /enquiries/{enquiryId} {
-      allow create: if isValidEnquiry(request.resource.data);
+      allow create: if isValidEnquiry(incoming());
       allow read, list, delete: if isAdmin();
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLead());
-      allow list: if isSignedIn() && (isAdmin() || isLead());
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || (isManager() && resource.data.team == getUserData().team));
+      // Secure list query: forced filter by role/team check in rules
+      allow list: if isSignedIn() && (isAdmin() || (isManager() && resource.data.team == getUserData().team));
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'name', 'phone', 'company', 'schoolName', 'cityArea', 'decisionMaker', 'currentDigitalStatus', 'contactNumber', 'meetingDate', 'potentialTier', 'leadCategory', 'nextActionItem', 'enrollment'])) ||
+        isAdmin() ||
+        (isManager() && resource.data.team == getUserData().team && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'team', 'role', 'batch', 'isEnrollmentActive', 'enrollment']))
+      );
       allow delete: if isAdmin();
     }
 
     match /leads/{leadId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isValidLead(incoming());
+      // Secure list query: evaluation of existing() requires clients to use correct 'where' clauses
       allow list, get: if isSignedIn() && (
-        resource.data.salesRepId == request.auth.uid || 
+        (resource.data.salesRepId == request.auth.uid) || 
         isAdmin() || 
-        (isLead() && resource.data.team == getUserData().team)
+        (isManager() && resource.data.team == getUserData().team)
       );
       allow update: if isSignedIn() && (
-        resource.data.salesRepId == request.auth.uid || 
+        (resource.data.salesRepId == request.auth.uid && isValidLead(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'comments', 'notes', 'schoolName', 'cityArea', 'decisionMaker', 'currentDigitalStatus', 'contactNumber', 'meetingDate', 'potentialTier', 'leadCategory', 'nextActionItem'])) ||
         isAdmin() || 
-        (isLead() && resource.data.team == getUserData().team)
+        (isManager() && resource.data.team == getUserData().team && isValidLead(incoming()))
       );
+      allow delete: if isAdmin();
     }
 
     match /logs/{logId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isValidLog(incoming());
       allow read, list: if isAdmin();
     }
+
+    // --- VALIDATION BLUEPRINTS ---
 
     function isValidEnquiry(data) {
       return data.keys().hasAll(['name', 'email', 'plan', 'message', 'createdAt']) &&
@@ -60,7 +90,26 @@ service cloud.firestore {
              data.email is string && data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
              data.plan is string && data.plan.size() > 0 &&
              data.message is string && data.message.size() > 0 && data.message.size() <= 3000 &&
-             data.createdAt == request.time;
+             (data.createdAt == request.time || data.createdAt is timestamp);
+    }
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.role in ['admin', 'manager', 'sales'] &&
+             data.status in ['pending', 'active', 'denied'];
+    }
+
+    function isValidLead(data) {
+      return data.name is string && data.name.size() <= 200 &&
+             data.email is string &&
+             data.salesRepId is string;
+    }
+
+    function isValidLog(data) {
+      return data.userId == request.auth.uid &&
+             data.action is string &&
+             data.timestamp == request.time;
     }
   }
 }

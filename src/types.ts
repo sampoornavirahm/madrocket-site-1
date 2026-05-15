@@ -54,7 +54,26 @@ export interface Enquiry {
   createdAt: any; // Firestore Timestamp
 }
 
-export type UserRole = 'admin' | 'sales' | 'lead';
+export type UserRole = 'admin' | 'sales' | 'manager';
+
+export interface InternEnrollment {
+  fullName: string;
+  address: string;
+  education: string;
+  skills: string;
+  startDate: string;
+  submittedAt: any;
+  status: 'none' | 'pending' | 'approved' | 'declined';
+  comment?: string;
+  stipend?: {
+    fixed: number;
+    variable: {
+      type: 'amount' | 'percentage';
+      value: number;
+      description: string;
+    };
+  };
+}
 
 export interface UserProfile {
   uid: string;
@@ -63,6 +82,8 @@ export interface UserProfile {
   status: 'pending' | 'active' | 'denied';
   team?: string | null; // e.g. "School Website", "Real Estate"
   batch?: string | null; // e.g. "Batch May 2026"
+  isEnrollmentActive?: boolean;
+  enrollment?: InternEnrollment;
 }
 
 export type LeadStatus = 
@@ -96,6 +117,18 @@ export interface Lead {
   salesRepId: string; // UID of the user who owns the lead
   salesRepName: string;
   notes?: string;
+  
+  // School Specific Fields
+  schoolName?: string;
+  cityArea?: string;
+  decisionMaker?: string; // Principal/Trustee/Other
+  currentDigitalStatus?: string;
+  contactNumber?: string;
+  meetingDate?: string;
+  potentialTier?: string; // 1/2/3
+  leadCategory?: string; // Cold/Warm/Hot/Closed
+  nextActionItem?: string;
+  
   comments?: LeadComment[];
   updatedAt: any;
   createdAt: any;

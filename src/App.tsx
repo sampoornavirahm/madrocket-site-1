@@ -9,6 +9,7 @@ import { Clients } from './components/Clients';
 import { Contact } from './components/Contact';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SalesDashboard } from './components/SalesDashboard';
+import { InternEnrollmentForm } from './components/InternEnrollmentForm';
 import { siteService } from './services/siteService';
 import { SiteConfig, UserProfile } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
@@ -31,7 +32,10 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const ADMIN_EMAIL = 'piyush.resoluteai@gmail.com';
+  const ADMIN_EMAILS = [
+    'piyush.resoluteai@gmail.com',
+    'friendswatchgotforfree@gmail.com'
+  ];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -39,8 +43,7 @@ export default function App() {
       if (u) {
         let profile = await siteService.getUserProfile(u.uid);
         const normalizedEmail = (u.email || '').toLowerCase().trim();
-        const normalizedAdminEmail = ADMIN_EMAIL.toLowerCase().trim();
-        const isAdmin = normalizedEmail === normalizedAdminEmail;
+        const isAdmin = ADMIN_EMAILS.some(email => email.toLowerCase().trim() === normalizedEmail);
         
         if (!profile) {
           profile = {
@@ -86,7 +89,8 @@ export default function App() {
         // If no config found in Firestore
         if (!siteConfig) {
           // IF the admin is logged in, seed the data
-          if (user?.email === ADMIN_EMAIL) {
+          const isAdmin = user?.email && ADMIN_EMAILS.some(e => e.toLowerCase().trim() === user.email?.toLowerCase().trim());
+          if (isAdmin) {
             console.log("Admin detected, seeding default configuration...");
             await siteService.seedData(DEFAULT_SITE_CONFIG);
             siteConfig = DEFAULT_SITE_CONFIG;
@@ -223,7 +227,7 @@ export default function App() {
   const status = userProfile?.status || 'pending';
   const isGuest = !userProfile;
 
-  if (!isGuest && (role === 'admin' || role === 'sales' || role === 'lead')) {
+  if (!isGuest && (role === 'admin' || role === 'sales' || role === 'manager')) {
     if (status === 'pending' && role !== 'admin') {
       return (
         <div className="h-screen w-full bg-[#050505] flex flex-col items-center justify-center gap-8 p-6 text-center">
@@ -296,9 +300,14 @@ export default function App() {
 
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-7xl mx-auto">
-            {role === 'admin' || role === 'lead' ? (
+            {role === 'admin' || role === 'manager' ? (
               <AdminDashboard config={config} userProfile={userProfile!} />
-            ) : userProfile && (
+            ) : userProfile.isEnrollmentActive && (!userProfile.enrollment || userProfile.enrollment.status === 'none') ? (
+              <InternEnrollmentForm 
+                userProfile={userProfile} 
+                onComplete={() => siteService.getUserProfile(userProfile.uid).then(setUserProfile)} 
+              />
+            ) : (
               <SalesDashboard 
                 userProfile={userProfile} 
                 teams={config.teams || []} 
@@ -447,7 +456,7 @@ export default function App() {
             ) : (
               <div className="flex items-center gap-4">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-blue-500 flex items-center gap-2">
-                  <User className="w-3 h-3" /> {user.email} {user.email === ADMIN_EMAIL && '(Admin)'}
+                  <User className="w-3 h-3" /> {user.email} {ADMIN_EMAILS.some(e => e.toLowerCase().trim() === user.email?.toLowerCase().trim()) && '(Admin)'}
                 </span>
                 <button 
                   onClick={handleLogout}

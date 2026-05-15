@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { siteService } from '../services/siteService';
 import { Enquiry, SiteConfig, Lead, UserProfile, LeadStatus, SystemLog } from '../types';
-import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw, Database, Plus, Trash2, Users, Target, Save, BarChart3, TrendingUp, Shield, Orbit, Activity, MessageCircle, CheckCircle2, X, MoreVertical } from 'lucide-react';
+import { Mail, User, Briefcase, Calendar, MessageSquare, Loader2, RefreshCcw, Database, Plus, Trash2, Users, Target, Save, BarChart3, TrendingUp, Shield, Orbit, Activity, MessageCircle, CheckCircle2, X, MoreVertical, ClipboardList } from 'lucide-react';
 import { DEFAULT_SITE_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
@@ -12,7 +12,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialConfig, userProfile }) => {
   const isAdminUser = userProfile.role === 'admin';
-  const isLeadUser = userProfile.role === 'lead';
+  const isManagerUser = userProfile.role === 'manager';
 
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -23,8 +23,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     isAdminUser ? 'enquiries' : 'leads'
   );
 
-  const pendingUsers = users.filter(u => u.status === 'pending' || !u.status);
-  const activeUsers = users.filter(u => u.status === 'active' || u.status === 'denied');
+  const pendingUsers = users.filter(u => {
+    const isPending = u.status === 'pending' || !u.status;
+    if (!isPending) return false;
+    if (isManagerUser) return u.role === 'sales';
+    return true;
+  });
+
+  const activeUsers = users.filter(u => {
+    const isActive = u.status === 'active' || u.status === 'denied';
+    if (!isActive) return false;
+    if (isManagerUser) return u.role === 'sales' && u.team === userProfile.team;
+    return true;
+  });
 
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -34,7 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
   const [syncMessage, setSyncMessage] = useState('');
 
   const [planFilter, setPlanFilter] = useState('All Plans');
-  const [teamFilter, setTeamFilter] = useState(isLeadUser ? (userProfile.team || 'All Teams') : 'All Teams');
+  const [teamFilter, setTeamFilter] = useState(isManagerUser ? (userProfile.team || 'All Teams') : 'All Teams');
   const [batchFilter, setBatchFilter] = useState('All Batches');
   
   // Status Change Modal State
@@ -62,6 +73,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     metaPixelId: ''
   });
 
+  // Enrollment Modal State
+  const [enrollmentActionUser, setEnrollmentActionUser] = useState<UserProfile | null>(null);
+  const [enrollmentComment, setEnrollmentComment] = useState('');
+  const [isProcessingEnrollment, setIsProcessingEnrollment] = useState(false);
+  
+  // Review Modal State
+  const [reviewingEnrollmentUser, setReviewingEnrollmentUser] = useState<UserProfile | null>(null);
+  const [stipendConfig, setStipendConfig] = useState({
+    fixed: 0,
+    variableType: 'amount' as 'amount' | 'percentage',
+    variableValue: 0,
+    variableDesc: ''
+  });
+
   const fetchData = async (filter?: string) => {
     setLoading(true);
     try {
@@ -71,11 +96,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
         batch: batchFilter === 'All Batches' ? undefined : batchFilter
       };
 
+      const userTeamFilter = isManagerUser ? userProfile.team : undefined;
+
       const [enquiriesData, configData, leadsData, usersData, logsData] = await Promise.all([
         isAdminUser ? siteService.getEnquiries(filter === 'All Plans' ? undefined : filter) : Promise.resolve([]),
         siteService.getConfig(),
         siteService.getLeads(leadFilters),
-        (isAdminUser || isLeadUser) ? siteService.getAllUsers() : Promise.resolve([]),
+        (isAdminUser || isManagerUser) ? siteService.getAllUsers(userTeamFilter) : Promise.resolve([]),
         isAdminUser ? siteService.getLogs() : Promise.resolve([])
       ]);
       setEnquiries(enquiriesData);
@@ -119,7 +146,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     try {
       setLoading(true);
       setFetchError(null);
-      const allUsers = await siteService.getAllUsers();
+      const teamFilter = isManagerUser ? userProfile.team : undefined;
+      const allUsers = await siteService.getAllUsers(teamFilter);
       setUsers(allUsers);
       setSyncMessage('Personnel database reloaded');
       setTimeout(() => setSyncMessage(''), 3000);
@@ -127,6 +155,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
       setFetchError(`Force Reload Failed: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleActivateEnrollment = async () => {
+    if (!enrollmentActionUser || !enrollmentComment.trim()) return;
+    setIsProcessingEnrollment(true);
+    try {
+      await siteService.activateEnrollment(enrollmentActionUser.uid, enrollmentComment.trim());
+      await logAction('ACTIVATE_INTERN_ENROLLMENT', `Activated enrollment form for ${enrollmentActionUser.email}`);
+      setUsers(prev => prev.map(u => u.uid === enrollmentActionUser.uid ? { ...u, isEnrollmentActive: true, enrollment: { ...u.enrollment, comment: enrollmentComment.trim(), status: 'none' } as any } : u));
+      setEnrollmentActionUser(null);
+      setEnrollmentComment('');
+      setSyncMessage('Enrollment form activated for user.');
+      setTimeout(() => setSyncMessage(''), 3000);
+    } catch (err) {
+      alert('Failed to activate enrollment');
+    } finally {
+      setIsProcessingEnrollment(false);
+    }
+  };
+
+  const handleReviewEnrollment = async (result: 'approved' | 'declined') => {
+    if (!reviewingEnrollmentUser) return;
+    setIsProcessingEnrollment(true);
+    try {
+      const stipend = result === 'approved' ? {
+        fixed: stipendConfig.fixed,
+        variable: {
+          type: stipendConfig.variableType,
+          value: stipendConfig.variableValue,
+          description: stipendConfig.variableDesc
+        }
+      } : undefined;
+
+      await siteService.reviewEnrollment(reviewingEnrollmentUser.uid, result, stipend);
+      await logAction(`ENROLLMENT_${result.toUpperCase()}`, `${result.charAt(0).toUpperCase() + result.slice(1)} intern enrollment for ${reviewingEnrollmentUser.email}`);
+      
+      setUsers(prev => prev.map(u => {
+        if (u.uid === reviewingEnrollmentUser.uid) {
+          return {
+            ...u,
+            status: result === 'approved' ? u.status : 'denied',
+            enrollment: { ...u.enrollment, status: result, stipend } as any
+          };
+        }
+        return u;
+      }));
+      setReviewingEnrollmentUser(null);
+      setSyncMessage(`Enrollment ${result} successfully.`);
+      setTimeout(() => setSyncMessage(''), 3000);
+    } catch (err) {
+      alert('Failed to review enrollment');
+    } finally {
+      setIsProcessingEnrollment(false);
     }
   };
 
@@ -227,8 +309,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
         setIsActivating(false);
         return;
       }
-      if (activationRole === 'lead' && !activationTeam) {
-        alert('Lead activation requires a team assignment.');
+      if (activationRole === 'manager' && !activationTeam) {
+        alert('Manager activation requires a team assignment.');
         setIsActivating(false);
         return;
       }
@@ -408,21 +490,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     };
 
     const unsubscribeLeads = siteService.subscribeLeads(leadFilters, (updatedLeads) => {
-      setLeads(updatedLeads);
+      // Hide deleted leads unless specifically searching or admin wants to see them (default hide)
+      setLeads(updatedLeads.filter(l => l.status !== 'Deleted'));
       setLoading(false);
     });
 
     // Enquiries and Config fetch (these can remain static or we can add subscribers later)
     fetchData(planFilter);
 
-    // Users real-time listener for admin/lead
+    // Users real-time listener for admin/manager
     let unsubscribeUsers = () => {};
-    if (isAdminUser || isLeadUser) {
+    if (isAdminUser || isManagerUser) {
+      const userTeamFilter = isManagerUser ? userProfile.team : undefined;
       unsubscribeUsers = siteService.subscribeAllUsers(
         (updatedUsers) => {
           setUsers(updatedUsers);
           setFetchError(null);
         },
+        userTeamFilter,
         (err) => {
           setFetchError(`Real-time Sync Failed: ${err.message || String(err)}`);
         }
@@ -433,7 +518,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
       unsubscribeLeads();
       unsubscribeUsers();
     };
-  }, [planFilter, teamFilter, batchFilter, isAdminUser, isLeadUser]);
+  }, [planFilter, teamFilter, batchFilter, isAdminUser, isManagerUser]);
 
   const plans = [
     'All Plans',
@@ -535,7 +620,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
           >
             Sales Pipeline
           </button>
-          {(isAdminUser || isLeadUser) && (
+          {(isAdminUser || isManagerUser) && (
             <button 
               onClick={() => setActiveTab('team')}
               className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -780,7 +865,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                   {['All Teams', ...(config?.teams || [])].map(t => <option key={t} value={t} className="bg-black">{t}</option>)}
                 </select>
               )}
-              {isLeadUser && (
+              {isManagerUser && (
                 <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 border-r border-white/10 pr-4">
                   Team: {userProfile.team}
                 </div>
@@ -874,6 +959,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                     </button>
                   </div>
 
+                  {/* Lead Details Summary */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">School Name</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.schoolName || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">City/Area</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.cityArea || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Decision Maker</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.decisionMaker || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Tier</span>
+                      <p className="text-xs text-white font-bold">Tier {viewingLeadLog.potentialTier || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Category</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.leadCategory || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Meeting Date</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.meetingDate || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">D. Contact</span>
+                      <p className="text-xs text-white font-bold">{viewingLeadLog.contactNumber || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Current Tech</span>
+                      <p className="text-xs text-white font-bold truncate" title={viewingLeadLog.currentDigitalStatus}>{viewingLeadLog.currentDigitalStatus || 'N/A'}</p>
+                    </div>
+                    <div className="col-span-2 md:col-span-4 space-y-1 pt-2 border-t border-white/5">
+                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Next Action Item</span>
+                      <p className="text-xs text-blue-400 font-medium italic">{viewingLeadLog.nextActionItem || 'No action item defined.'}</p>
+                    </div>
+                  </div>
+
                     <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar mb-6">
                       {(viewingLeadLog.comments || []).length === 0 ? (
                         <div className="py-12 text-center">
@@ -952,7 +1077,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                     <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-6 py-6">
                         <div className="text-white font-bold text-sm tracking-tight">{lead.name}</div>
-                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{lead.email}</div>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{lead.schoolName || lead.company || lead.email}</div>
                       </td>
                       <td className="px-6 py-6">
                         <div className="flex items-center gap-2">
@@ -987,18 +1112,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                       <td className="px-6 py-6">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => handleDeleteLead(lead.id!)}
-                            className="p-2 text-gray-600 hover:text-red-500 transition-colors"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLead(lead.id!);
+                            }}
+                            className="p-3 -m-1 text-gray-600 hover:text-red-500 transition-colors relative z-20 cursor-pointer"
                             title="Delete Lead"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 pointer-events-none" />
                           </button>
                           <button 
-                            onClick={() => setViewingLeadLog(lead)}
-                            className="p-2 text-gray-600 hover:text-white transition-colors"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingLeadLog(lead);
+                            }}
+                            className="p-3 -m-1 text-gray-600 hover:text-white transition-colors relative z-20 cursor-pointer"
                             title="View History Log"
                           >
-                            <MoreVertical className="w-4 h-4" />
+                            <MoreVertical className="w-4 h-4 pointer-events-none" />
                           </button>
                         </div>
                       </td>
@@ -1039,7 +1172,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 pl-1">Assign Role</label>
                       <div className="flex gap-2">
-                        {(['sales', 'lead', 'admin'] as const).map(role => (
+                        {(['sales', 'manager', 'admin'] as const)
+                          .filter(role => !isManagerUser || role === 'sales')
+                          .map(role => (
                           <button
                             key={role}
                             onClick={() => setActivationRole(role)}
@@ -1058,7 +1193,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                     {activationRole !== 'admin' && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 pl-1">Assign Team {activationRole === 'lead' || activationRole === 'sales' ? <span className="text-red-500">*</span> : ''}</label>
+                          <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 pl-1">Assign Team {activationRole === 'manager' || activationRole === 'sales' ? <span className="text-red-500">*</span> : ''}</label>
                           <select 
                             value={activationTeam}
                             onChange={(e) => setActivationTeam(e.target.value)}
@@ -1203,10 +1338,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                 <thead className="bg-white/5 border-b border-white/5">
                   <tr>
                     <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">User / Profile</th>
+                    <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Internship Status</th>
                     <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">System Status</th>
                     <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Assigned Role</th>
-                    <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Team Assignment</th>
-                    <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Batch Assignment</th>
+                    <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -1226,6 +1361,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                             </div>
                           </div>
                         </td>
+                        <td className="px-6 py-6 font-mono text-[9px]">
+                          {!u.isEnrollmentActive ? (
+                            <span className="text-gray-600">Inactive</span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-widest ${
+                              u.enrollment?.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                              u.enrollment?.status === 'pending' ? 'bg-orange-500/10 text-orange-500' :
+                              u.enrollment?.status === 'declined' ? 'bg-red-500/10 text-red-500' :
+                              'bg-blue-500/10 text-blue-500'
+                            }`}>
+                              {u.enrollment?.status || 'Active'}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-6 py-6">
                           <select 
                             value={u.status}
@@ -1241,33 +1390,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                         <td className="px-6 py-6">
                           <select 
                             value={u.role}
+                            disabled={isManagerUser}
                             onChange={(e) => handleUpdateUser(u.uid, { role: e.target.value as any })}
-                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-500 outline-none"
+                            className={`bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-500 outline-none ${isManagerUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             <option value="admin" className="bg-black">Admin</option>
                             <option value="sales" className="bg-black">Sales</option>
-                            <option value="lead" className="bg-black">Lead</option>
+                            <option value="manager" className="bg-black">Manager</option>
                           </select>
                         </td>
-                        <td className="px-6 py-6">
-                          <select 
-                            value={u.team || 'None'}
-                            onChange={(e) => handleUpdateUser(u.uid, { team: e.target.value === 'None' ? null : e.target.value })}
-                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gray-300 outline-none"
-                          >
-                            <option value="None" className="bg-black">None</option>
-                            {config?.teams?.map(t => <option key={t} value={t} className="bg-black">{t}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-6 py-6">
-                          <select 
-                            value={u.batch || 'None'}
-                            onChange={(e) => handleUpdateUser(u.uid, { batch: e.target.value === 'None' ? null : e.target.value })}
-                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gray-300 outline-none"
-                          >
-                            <option value="None" className="bg-black">None</option>
-                            {config?.batches?.map(b => <option key={b} value={b} className="bg-black">{b}</option>)}
-                          </select>
+                        <td className="px-6 py-6 transition-all">
+                          <div className="flex items-center gap-2">
+                             {!u.isEnrollmentActive && (u.status === 'active' || !u.status) && (
+                               <button 
+                                 type="button"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setEnrollmentActionUser(u);
+                                 }}
+                                 className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-blue-500/20 cursor-pointer relative z-50 transition-all active:scale-95"
+                               >
+                                 Activate Intern Form
+                               </button>
+                             )}
+                             {u.enrollment?.status === 'pending' && (
+                               <button 
+                                 type="button"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setReviewingEnrollmentUser(u);
+                                 }}
+                                 className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest border border-orange-500/20 cursor-pointer relative z-50 transition-all active:scale-95"
+                               >
+                                 Review Enrollment
+                               </button>
+                             )}
+                             {(u.enrollment?.status === 'approved' || u.enrollment?.status === 'declined') && (
+                               <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest italic">
+                                 Form Processed
+                               </span>
+                             )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1505,6 +1668,187 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
               </div>
             </div>
           )}
+
+        {/* Intern Enrollment Modals */}
+        {enrollmentActionUser && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <ClipboardList className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-bold text-white tracking-tight">Activate Intern Form</h4>
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">Invitation for: {enrollmentActionUser.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 pl-1">Invitation Note / Comment</label>
+                  <textarea 
+                    value={enrollmentComment}
+                    onChange={(e) => setEnrollmentComment(e.target.value)}
+                    placeholder="Provide context or instructions for the intern..."
+                    className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm outline-none focus:border-blue-500 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => { setEnrollmentActionUser(null); setEnrollmentComment(''); }}
+                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-400 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all"
+                  >
+                    Abort
+                  </button>
+                  <button 
+                    onClick={handleActivateEnrollment}
+                    disabled={isProcessingEnrollment || !enrollmentComment.trim()}
+                    className="flex-1 py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isProcessingEnrollment ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                    Activate Form
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {reviewingEnrollmentUser && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-2xl w-full shadow-2xl my-8"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                    <Orbit className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-white tracking-tight">Review Enrollment</h4>
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Candidacy: {reviewingEnrollmentUser.enrollment?.fullName}</p>
+                  </div>
+                </div>
+                <button onClick={() => setReviewingEnrollmentUser(null)} className="text-gray-500 hover:text-white p-2">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-white/5">
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 border-b border-white/10 pb-2">Personal Intelligence</h5>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Full Name</span>
+                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.fullName}</p>
+                    </div>
+                    <div>
+                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Residential Address</span>
+                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Proposed Start</span>
+                      <p className="text-white text-sm font-medium">{reviewingEnrollmentUser.enrollment?.startDate}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 border-b border-white/10 pb-2">Academic & Technical</h5>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Education Background</span>
+                      <p className="text-gray-300 text-sm italic">"{reviewingEnrollmentUser.enrollment?.education}"</p>
+                    </div>
+                    <div>
+                      <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest block mb-1">Core Competencies</span>
+                      <p className="text-white text-sm leading-relaxed">{reviewingEnrollmentUser.enrollment?.skills}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 mb-8">
+                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 border-b border-white/10 pb-2">Stipend Configuration (Required for Approval)</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[8px] uppercase font-black text-gray-500 tracking-widest ml-1">Fixed Stipend (INR)</label>
+                    <input 
+                      type="number"
+                      value={stipendConfig.fixed}
+                      onChange={(e) => setStipendConfig({...stipendConfig, fixed: parseFloat(e.target.value) || 0})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[8px] uppercase font-black text-gray-500 tracking-widest ml-1">Variable Type</label>
+                    <div className="flex gap-2">
+                      {['amount', 'percentage'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setStipendConfig({...stipendConfig, variableType: type as any})}
+                          className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${
+                            stipendConfig.variableType === type 
+                              ? 'bg-orange-500 border-orange-500 text-white' 
+                              : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[8px] uppercase font-black text-gray-500 tracking-widest ml-1">Variable Value {stipendConfig.variableType === 'percentage' ? '(%)' : '(INR)'}</label>
+                    <input 
+                      type="number"
+                      value={stipendConfig.variableValue}
+                      onChange={(e) => setStipendConfig({...stipendConfig, variableValue: parseFloat(e.target.value) || 0})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-orange-500"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[8px] uppercase font-black text-gray-500 tracking-widest ml-1">Variable Description</label>
+                    <input 
+                      type="text"
+                      value={stipendConfig.variableDesc}
+                      onChange={(e) => setStipendConfig({...stipendConfig, variableDesc: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-orange-500"
+                      placeholder="e.g. Sales Commission"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4">
+                <button 
+                  onClick={() => handleReviewEnrollment('declined')}
+                  disabled={isProcessingEnrollment}
+                  className="flex-1 py-4 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl border border-red-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <X className="w-4 h-4" /> Decline & Deactivate Identity
+                </button>
+                <button 
+                  onClick={() => handleReviewEnrollment('approved')}
+                  disabled={isProcessingEnrollment}
+                  className="flex-1 py-4 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-lg shadow-green-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  {isProcessingEnrollment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Approve & Dispatch Offer Letter
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
         </div>
       </div>
     </div>
