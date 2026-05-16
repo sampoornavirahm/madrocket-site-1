@@ -46,6 +46,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
   const [planFilter, setPlanFilter] = useState('All Plans');
   const [teamFilter, setTeamFilter] = useState(isManagerUser ? (userProfile.team || 'All Teams') : 'All Teams');
   const [batchFilter, setBatchFilter] = useState('All Batches');
+  const [userFilter, setUserFilter] = useState('All Users');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Status Change Modal State
   const [statusChangeLead, setStatusChangeLead] = useState<Lead | null>(null);
@@ -93,7 +95,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
       // Determine filters based on role
       const leadFilters = {
         team: isAdminUser ? (teamFilter === 'All Teams' ? undefined : teamFilter) : userProfile.team,
-        batch: batchFilter === 'All Batches' ? undefined : batchFilter
+        batch: batchFilter === 'All Batches' ? undefined : batchFilter,
+        salesRepId: userFilter === 'All Users' ? undefined : userFilter
       };
 
       const userTeamFilter = isManagerUser ? userProfile.team : undefined;
@@ -486,7 +489,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
     // Lead real-time listener
     const leadFilters = {
       team: isAdminUser ? (teamFilter === 'All Teams' ? undefined : teamFilter) : userProfile.team,
-      batch: batchFilter === 'All Batches' ? undefined : batchFilter
+      batch: batchFilter === 'All Batches' ? undefined : batchFilter,
+      salesRepId: userFilter === 'All Users' ? undefined : userFilter
     };
 
     const unsubscribeLeads = siteService.subscribeLeads(leadFilters, (updatedLeads) => {
@@ -518,7 +522,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
       unsubscribeLeads();
       unsubscribeUsers();
     };
-  }, [planFilter, teamFilter, batchFilter, isAdminUser, isManagerUser]);
+  }, [planFilter, teamFilter, batchFilter, userFilter, isAdminUser, isManagerUser]);
+
+  const filteredEnquiries = enquiries.filter(e => 
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredClients = (config?.clients || []).filter(c => 
+    c.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredLeads = leads.filter(l => 
+    l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (l.schoolName && l.schoolName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (l.company && l.company.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredActiveUsers = activeUsers.filter(u => 
+    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.enrollment?.fullName && u.enrollment.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredLogs = systemLogs.filter(log => 
+    log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.details.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const plans = [
     'All Plans',
@@ -545,6 +578,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
             <h2 className="text-sm uppercase tracking-[0.4em] text-blue-500 font-bold mb-4">Command Center</h2>
             <h3 className="text-4xl md:text-6xl font-bold text-white tracking-tighter uppercase">Admin <br/> Dashboard</h3>
           </div>
+          
+          <div className="flex-1 max-w-md mx-auto md:mx-0">
+             <div className="relative">
+               <input 
+                 type="text"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder="Search entries in current tab..."
+                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-xs outline-none focus:border-blue-500 transition-all"
+               />
+               <Activity className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+             </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-4">
             {isAdminUser && (
               <>
@@ -603,7 +650,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
               </div>
             ) : (
               <div className="grid gap-6">
-                {enquiries.map((enquiry, idx) => (
+                {filteredEnquiries.map((enquiry, idx) => (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -700,7 +747,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...(config?.clients || [])].sort((a, b) => a.localeCompare(b)).map((client) => (
+              {filteredClients.sort((a, b) => a.localeCompare(b)).map((client) => (
                 <motion.div 
                   layout
                   key={client} 
@@ -817,6 +864,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
               >
                 {['All Batches', ...(config?.batches || [])].map(b => <option key={b} value={b} className="bg-black">{b}</option>)}
               </select>
+
+              <div className="flex items-center gap-2 border-l border-white/10 pl-4 ml-2">
+                <User className="w-4 h-4 text-blue-500" />
+              </div>
+              <select 
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+                className="bg-transparent text-white text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
+              >
+                <option value="All Users" className="bg-black">All Users</option>
+                {activeUsers.map(u => (
+                  <option key={u.uid} value={u.uid} className="bg-black">{u.email.split('@')[0]}</option>
+                ))}
+              </select>
             </div>
 
             {/* Status Change Modal */}
@@ -901,38 +962,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
 
                   {/* Lead Details Summary */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">School Name</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.schoolName || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">City/Area</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.cityArea || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Decision Maker</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.decisionMaker || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Tier</span>
-                      <p className="text-xs text-white font-bold">Tier {viewingLeadLog.potentialTier || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Category</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.leadCategory || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Meeting Date</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.meetingDate || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">D. Contact</span>
-                      <p className="text-xs text-white font-bold">{viewingLeadLog.contactNumber || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Current Tech</span>
-                      <p className="text-xs text-white font-bold truncate" title={viewingLeadLog.currentDigitalStatus}>{viewingLeadLog.currentDigitalStatus || 'N/A'}</p>
-                    </div>
+                    {viewingLeadLog.team?.toLowerCase().includes('dubai re') ? (
+                      <>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Property Type</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.propertyType || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Budget</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.budget || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Location Pref</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.locationPreference || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Bedrooms</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.bedrooms || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Investor</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.isInvestor ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Ready/Off-Plan</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.readyOrOffPlan || 'N/A'}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">School Name</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.schoolName || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">City/Area</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.cityArea || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Decision Maker</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.decisionMaker || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Tier</span>
+                          <p className="text-xs text-white font-bold">Tier {viewingLeadLog.potentialTier || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Category</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.leadCategory || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Meeting Date</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.meetingDate || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">D. Contact</span>
+                          <p className="text-xs text-white font-bold">{viewingLeadLog.contactNumber || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Current Tech</span>
+                          <p className="text-xs text-white font-bold truncate" title={viewingLeadLog.currentDigitalStatus}>{viewingLeadLog.currentDigitalStatus || 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
                     <div className="col-span-2 md:col-span-4 space-y-1 pt-2 border-t border-white/5">
                       <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Next Action Item</span>
                       <p className="text-xs text-blue-400 font-medium italic">{viewingLeadLog.nextActionItem || 'No action item defined.'}</p>
@@ -1013,7 +1105,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {leads.map((lead) => (
+                  {filteredLeads.map((lead) => (
                     <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-6 py-6">
                         <div className="text-white font-bold text-sm tracking-tight">{lead.name}</div>
@@ -1285,8 +1377,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {activeUsers.length > 0 ? (
-                    activeUsers.map((u) => (
+                  {filteredActiveUsers.length > 0 ? (
+                    filteredActiveUsers.map((u) => (
                       <tr key={u.uid} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-3">
@@ -1522,7 +1614,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config: initialC
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {systemLogs.map((log) => (
+                  {filteredLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-white/[0.01] transition-colors">
                       <td className="px-6 py-4 text-gray-500 font-mono text-[10px]">
                         {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : 'Processing...'}

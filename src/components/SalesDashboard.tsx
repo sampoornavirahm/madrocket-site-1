@@ -26,6 +26,7 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Status Change Modal State
   const [statusChangeLead, setStatusChangeLead] = useState<Lead | null>(null);
@@ -52,8 +53,17 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
     meetingDate: '',
     potentialTier: '1' as '1' | '2' | '3',
     leadCategory: 'Cold' as 'Cold' | 'Warm' | 'Hot' | 'Closed',
-    nextActionItem: ''
+    nextActionItem: '',
+    // RE Specific fields
+    propertyType: 'Apartment',
+    budget: '',
+    locationPreference: '',
+    bedrooms: '1',
+    isInvestor: false,
+    readyOrOffPlan: 'Ready'
   });
+
+  const isRESalesTeam = userProfile.team?.toLowerCase().includes('dubai re');
 
   const statuses: LeadStatus[] = [
     'New', 
@@ -111,7 +121,13 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
         meetingDate: '',
         potentialTier: '1',
         leadCategory: 'Cold',
-        nextActionItem: ''
+        nextActionItem: '',
+        propertyType: 'Apartment',
+        budget: '',
+        locationPreference: '',
+        bedrooms: '1',
+        isInvestor: false,
+        readyOrOffPlan: 'Ready'
       });
     } catch (error) {
       alert('Failed to add lead');
@@ -226,6 +242,14 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
     }
   };
 
+  const filteredLeads = leads.filter(l => 
+    l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (l.schoolName && l.schoolName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (l.company && l.company.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   if (loading && leads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
@@ -245,6 +269,19 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
           <p className="mt-4 text-gray-500 text-sm font-medium uppercase tracking-widest">
             {userProfile.team} &bull; {userProfile.batch}
           </p>
+        </div>
+
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search leads name, email, phone..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-xs outline-none focus:border-blue-500 transition-all"
+            />
+            <Activity className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          </div>
         </div>
 
         {userProfile.enrollment?.status === 'pending' && (
@@ -345,108 +382,195 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
             </div>
 
             {/* School Specific Section */}
-            <div className="md:col-span-3 pt-4 border-t border-white/5 mt-4">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Institutional Details</h5>
+            {!isRESalesTeam ? (
+              <div className="md:col-span-3 pt-4 border-t border-white/5 mt-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Institutional Details</h5>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">School Name</label>
+                    <input 
+                      type="text" 
+                      value={newLead.schoolName}
+                      onChange={e => setNewLead({...newLead, schoolName: e.target.value})}
+                      placeholder="Global International School"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">City/Area</label>
+                    <input 
+                      type="text" 
+                      value={newLead.cityArea}
+                      onChange={e => setNewLead({...newLead, cityArea: e.target.value})}
+                      placeholder="Mumbai West"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Decision Maker</label>
+                    <select 
+                      value={newLead.decisionMaker}
+                      onChange={e => setNewLead({...newLead, decisionMaker: e.target.value as any})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="Principal">Principal</option>
+                      <option value="Trustee">Trustee</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1 text-blue-400">Status (C/W/H)</label>
+                    <select 
+                      value={newLead.leadCategory}
+                      onChange={e => setNewLead({...newLead, leadCategory: e.target.value as any})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="Cold">Cold</option>
+                      <option value="Warm">Warm</option>
+                      <option value="Hot">Hot</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Potential Tier</label>
+                    <select 
+                      value={newLead.potentialTier}
+                      onChange={e => setNewLead({...newLead, potentialTier: e.target.value as any})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="1">Tier 1</option>
+                      <option value="2">Tier 2</option>
+                      <option value="3">Tier 3</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Meeting Date</label>
+                    <input 
+                      type="date" 
+                      value={newLead.meetingDate}
+                      onChange={e => setNewLead({...newLead, meetingDate: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-1 space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Direct Contact Number</label>
+                    <input 
+                      type="tel" 
+                      value={newLead.contactNumber}
+                      onChange={e => setNewLead({...newLead, contactNumber: e.target.value})}
+                      placeholder="+91..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Current Digital Status</label>
+                    <textarea 
+                      value={newLead.currentDigitalStatus}
+                      onChange={e => setNewLead({...newLead, currentDigitalStatus: e.target.value})}
+                      placeholder="Mention current website, ERP, or social media presence..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500 h-[46px] resize-none"
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Next Action Item</label>
+                    <textarea 
+                      value={newLead.nextActionItem}
+                      onChange={e => setNewLead({...newLead, nextActionItem: e.target.value})}
+                      placeholder="Describe the immediate next step..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500 h-24 resize-none"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">School Name</label>
-                  <input 
-                    type="text" 
-                    value={newLead.schoolName}
-                    onChange={e => setNewLead({...newLead, schoolName: e.target.value})}
-                    placeholder="Global International School"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  />
+            ) : (
+              <div className="md:col-span-3 pt-4 border-t border-white/5 mt-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Real Estate Assets & Prefs</h5>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">City/Area</label>
-                  <input 
-                    type="text" 
-                    value={newLead.cityArea}
-                    onChange={e => setNewLead({...newLead, cityArea: e.target.value})}
-                    placeholder="Mumbai West"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Decision Maker</label>
-                  <select 
-                    value={newLead.decisionMaker}
-                    onChange={e => setNewLead({...newLead, decisionMaker: e.target.value as any})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  >
-                    <option value="Principal">Principal</option>
-                    <option value="Trustee">Trustee</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1 text-blue-400">Status (C/W/H)</label>
-                  <select 
-                    value={newLead.leadCategory}
-                    onChange={e => setNewLead({...newLead, leadCategory: e.target.value as any})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  >
-                    <option value="Cold">Cold</option>
-                    <option value="Warm">Warm</option>
-                    <option value="Hot">Hot</option>
-                    <option value="Closed">Closed</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Potential Tier</label>
-                  <select 
-                    value={newLead.potentialTier}
-                    onChange={e => setNewLead({...newLead, potentialTier: e.target.value as any})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  >
-                    <option value="1">Tier 1</option>
-                    <option value="2">Tier 2</option>
-                    <option value="3">Tier 3</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Meeting Date</label>
-                  <input 
-                    type="date" 
-                    value={newLead.meetingDate}
-                    onChange={e => setNewLead({...newLead, meetingDate: e.target.value})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-1 space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Direct Contact Number</label>
-                  <input 
-                    type="tel" 
-                    value={newLead.contactNumber}
-                    onChange={e => setNewLead({...newLead, contactNumber: e.target.value})}
-                    placeholder="+91..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Current Digital Status</label>
-                  <textarea 
-                    value={newLead.currentDigitalStatus}
-                    onChange={e => setNewLead({...newLead, currentDigitalStatus: e.target.value})}
-                    placeholder="Mention current website, ERP, or social media presence..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500 h-[46px] resize-none"
-                  />
-                </div>
-                <div className="md:col-span-3 space-y-2">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Next Action Item</label>
-                  <textarea 
-                    value={newLead.nextActionItem}
-                    onChange={e => setNewLead({...newLead, nextActionItem: e.target.value})}
-                    placeholder="Describe the immediate next step..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500 h-24 resize-none"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Property Type</label>
+                    <select 
+                      value={newLead.propertyType}
+                      onChange={e => setNewLead({...newLead, propertyType: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      {['Apartment', 'Villa', 'Penthouse', 'Townhouse', 'Plot', 'Commercial'].map(t => (
+                        <option key={t} value={t} className="bg-black">{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Budget (AED)</label>
+                    <input 
+                      type="text" 
+                      value={newLead.budget}
+                      onChange={e => setNewLead({...newLead, budget: e.target.value})}
+                      placeholder="e.g. 2M - 5M"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Location Preference</label>
+                    <input 
+                      type="text" 
+                      value={newLead.locationPreference}
+                      onChange={e => setNewLead({...newLead, locationPreference: e.target.value})}
+                      placeholder="e.g. Dubai Marina, Business Bay"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Bedrooms</label>
+                    <select 
+                      value={newLead.bedrooms}
+                      onChange={e => setNewLead({...newLead, bedrooms: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      {['Studio', '1', '2', '3', '4', '5+'].map(b => (
+                        <option key={b} value={b} className="bg-black">{b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Investor status</label>
+                    <select 
+                      value={newLead.isInvestor ? 'Yes' : 'No'}
+                      onChange={e => setNewLead({...newLead, isInvestor: e.target.value === 'Yes'})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="No" className="bg-black">End User</option>
+                      <option value="Yes" className="bg-black">Investor</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Ready / Off-Plan</label>
+                    <select 
+                      value={newLead.readyOrOffPlan}
+                      onChange={e => setNewLead({...newLead, readyOrOffPlan: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="Ready" className="bg-black">Ready</option>
+                      <option value="Off-Plan" className="bg-black">Off-Plan</option>
+                      <option value="Both" className="bg-black">Both</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-3 space-y-2">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500 ml-1">Next Action Item</label>
+                    <textarea 
+                      value={newLead.nextActionItem}
+                      onChange={e => setNewLead({...newLead, nextActionItem: e.target.value})}
+                      placeholder="Describe the immediate next step (e.g. Schedule viewing at Marina)..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500 h-24 resize-none"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="md:col-span-3">
               <button 
@@ -542,38 +666,69 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
 
             {/* Lead Details Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">School Name</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.schoolName || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">City/Area</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.cityArea || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Decision Maker</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.decisionMaker || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Tier</span>
-                <p className="text-xs text-white font-bold">Tier {viewingLeadLog.potentialTier || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Category</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.leadCategory || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Meeting Date</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.meetingDate || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">D. Contact</span>
-                <p className="text-xs text-white font-bold">{viewingLeadLog.contactNumber || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Current Tech</span>
-                <p className="text-xs text-white font-bold truncate" title={viewingLeadLog.currentDigitalStatus}>{viewingLeadLog.currentDigitalStatus || 'N/A'}</p>
-              </div>
+              {viewingLeadLog.team?.toLowerCase().includes('dubai re') ? (
+                <>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Property Type</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.propertyType || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Budget</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.budget || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Location Pref</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.locationPreference || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Bedrooms</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.bedrooms || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Investor</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.isInvestor ? 'Yes' : 'No'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Ready/Off-Plan</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.readyOrOffPlan || 'N/A'}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">School Name</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.schoolName || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">City/Area</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.cityArea || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Decision Maker</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.decisionMaker || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Tier</span>
+                    <p className="text-xs text-white font-bold">Tier {viewingLeadLog.potentialTier || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Category</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.leadCategory || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Meeting Date</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.meetingDate || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">D. Contact</span>
+                    <p className="text-xs text-white font-bold">{viewingLeadLog.contactNumber || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Current Tech</span>
+                    <p className="text-xs text-white font-bold truncate" title={viewingLeadLog.currentDigitalStatus}>{viewingLeadLog.currentDigitalStatus || 'N/A'}</p>
+                  </div>
+                </>
+              )}
               <div className="col-span-2 md:col-span-4 space-y-1 pt-2 border-t border-white/5">
                 <span className="text-[8px] uppercase font-black text-gray-500 tracking-[0.2em]">Next Action Item</span>
                 <p className="text-xs text-blue-400 font-medium italic">{viewingLeadLog.nextActionItem || 'No action item defined.'}</p>
@@ -654,7 +809,7 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ userProfile, tea
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {leads.map((lead) => (
+            {filteredLeads.map((lead) => (
               <tr 
                 key={lead.id} 
                 onClick={() => setViewingLeadLog(lead)}

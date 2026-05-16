@@ -14,6 +14,7 @@ import { OnboardingPortal } from './components/OnboardingPortal';
 import { PersonnelProfile } from './components/PersonnelProfile';
 import { Sidebar, ViewId } from './components/Sidebar';
 import { AppsView } from './components/AppsView';
+import { LeadGen } from './components/LeadGen';
 import { siteService } from './services/siteService';
 import { SiteConfig, UserProfile } from './types';
 import { DEFAULT_SITE_CONFIG } from './constants';
@@ -344,6 +345,8 @@ export default function App() {
                   isAdmin={role === 'admin'} 
                   onUpdate={(updatedApps) => setConfig({ ...config, apps: updatedApps })}
                 />
+              ) : dashboardView === 'leadgen' ? (
+                <LeadGen userProfile={userProfile} />
               ) : ['enquiries', 'clients', 'marketing', 'leads', 'team', 'logs'].includes(dashboardView) ? (
                 <AdminDashboard 
                   config={config} 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, User, Grid, LogOut, ChevronRight, MessageSquare, Users, Target, Shield, BarChart3, Database } from 'lucide-react';
 
-export type ViewId = 'main' | 'profile' | 'apps' | 'enquiries' | 'clients' | 'marketing' | 'leads' | 'team' | 'logs';
+export type ViewId = 'main' | 'profile' | 'apps' | 'enquiries' | 'clients' | 'marketing' | 'leads' | 'team' | 'logs' | 'leadgen';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -18,6 +18,7 @@ export function Sidebar({ activeView, onViewChange, onLogout, userEmail, role, p
 
   const userItems: { id: ViewId, label: string, icon: any }[] = [
     { id: 'main', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'leadgen', label: 'Lead Gen', icon: Target },
     { id: 'apps', label: 'Apps', icon: Grid },
     { id: 'profile', label: 'Profile', icon: User },
   ];

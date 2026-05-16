@@ -173,6 +173,14 @@ export interface Lead {
   potentialTier?: string; // 1/2/3
   leadCategory?: string; // Cold/Warm/Hot/Closed
   nextActionItem?: string;
+
+  // Real Estate Specific Fields
+  propertyType?: string; // Apartment, Villa, Penthouse, etc.
+  budget?: string;
+  locationPreference?: string;
+  bedrooms?: string;
+  isInvestor?: boolean;
+  readyOrOffPlan?: string; // Ready, Off-Plan
   
   comments?: LeadComment[];
   updatedAt: any;
